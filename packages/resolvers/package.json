@@ -1,0 +1,44 @@
+{
+  "name": "@piqit/resolvers",
+  "version": "0.0.1-alpha.0",
+  "description": "Built-in resolvers for piqit (glob, frontmatter, markdown)",
+  "keywords": [
+    "piqit",
+    "resolvers",
+    "glob",
+    "frontmatter",
+    "markdown",
+    "typescript",
+    "bun"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "bun": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "piqit": "workspace:*",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}
