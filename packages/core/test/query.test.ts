@@ -10,7 +10,6 @@ import type {
   MetaResolver,
   BodyResolver,
   StandardSchema,
-  SearchResult,
 } from "../src/types";
 
 // Mock schema
@@ -39,7 +38,7 @@ interface TestBody {
   html: string;
 }
 
-const testFiles: SearchResult<TestSearch>[] = [
+const testFiles: Array<{ path: string; params: TestSearch }> = [
   { path: "/work/todo/task-1.md", params: { status: "todo", name: "task-1" } },
   { path: "/work/todo/task-2.md", params: { status: "todo", name: "task-2" } },
   { path: "/work/done/task-3.md", params: { status: "done", name: "task-3" } },
@@ -57,23 +56,59 @@ const testBody: Record<string, TestBody> = {
   "/work/done/task-3.md": { html: "<p>Task 3 content</p>" },
 };
 
-// Mock resolvers
-function createMockSearchResolver(): SearchResolver<TestSearch> {
-  return {
-    async search(constraints?: Partial<TestSearch>) {
-      if (!constraints) {
-        return testFiles;
-      }
-      return testFiles.filter((f) => {
-        for (const [key, value] of Object.entries(constraints)) {
-          if (f.params[key as keyof TestSearch] !== value) {
-            return false;
+// Mock resolvers - updated for lazy param extraction interface
+function createMockSearchResolver(options?: { withScan?: boolean }): SearchResolver<TestSearch> {
+  // Build a map from path to params for extractParams
+  const pathToParams = new Map<string, TestSearch>();
+  for (const file of testFiles) {
+    pathToParams.set(file.path, file.params);
+  }
+
+  const resolver: SearchResolver<TestSearch> = {
+    async search(constraints?: Partial<TestSearch>): Promise<string[]> {
+      let files = testFiles;
+      if (constraints) {
+        files = testFiles.filter((f) => {
+          for (const [key, value] of Object.entries(constraints)) {
+            if (f.params[key as keyof TestSearch] !== value) {
+              return false;
+            }
           }
-        }
-        return true;
-      });
+          return true;
+        });
+      }
+      return files.map((f) => f.path);
+    },
+    extractParams(path: string): TestSearch {
+      const params = pathToParams.get(path);
+      if (!params) {
+        throw new Error(`Path not found: ${path}`);
+      }
+      return params;
     },
   };
+
+  // Add scan method if requested
+  if (options?.withScan) {
+    resolver.scan = async function* (constraints?: Partial<TestSearch>): AsyncGenerator<string> {
+      let files = testFiles;
+      if (constraints) {
+        files = testFiles.filter((f) => {
+          for (const [key, value] of Object.entries(constraints)) {
+            if (f.params[key as keyof TestSearch] !== value) {
+              return false;
+            }
+          }
+          return true;
+        });
+      }
+      for (const file of files) {
+        yield file.path;
+      }
+    };
+  }
+
+  return resolver;
 }
 
 function createMockMetaResolver(): MetaResolver<TestMeta> {
@@ -228,6 +263,21 @@ describe("QueryBuilder", () => {
         body: { html: "<p>Task 1 content</p>" },
       });
     });
+
+    test("returns empty search when only meta/body selected (lazy extraction)", async () => {
+      const results = await piq
+        .from<TestSearch, TestMeta, TestBody>("tasks")
+        .search({ name: "task-1" })
+        .select({
+          meta: ["title"],
+        })
+        .exec();
+
+      // When select is provided without search fields, search should be empty
+      // This is the lazy extraction optimization
+      expect(results[0].search).toEqual({});
+      expect(results[0].meta).toEqual({ title: "Task 1" });
+    });
   });
 
   describe("single", () => {
@@ -278,5 +328,140 @@ describe("piq.from", () => {
 
     const builder = piq.from("tasks");
     expect(builder).toBeInstanceOf(QueryBuilder);
+  });
+});
+
+describe("QueryBuilder.stream", () => {
+  beforeEach(() => {
+    clearCollections();
+  });
+
+  describe("with scan() available", () => {
+    beforeEach(() => {
+      registerCollections({
+        tasks: defineCollection({
+          searchSchema: mockSchema<TestSearch>(),
+          searchResolver: createMockSearchResolver({ withScan: true }),
+          metaSchema: mockSchema<TestMeta>(),
+          metaResolver: createMockMetaResolver(),
+          bodySchema: mockSchema<TestBody>(),
+          bodyResolver: createMockBodyResolver(),
+        }),
+      });
+    });
+
+    test("streams all results with wildcard", async () => {
+      const results: unknown[] = [];
+      for await (const result of piq.from("tasks").search("*").stream()) {
+        results.push(result);
+      }
+
+      expect(results).toHaveLength(3);
+    });
+
+    test("filters by search constraints", async () => {
+      const results: unknown[] = [];
+      for await (const result of piq
+        .from<TestSearch>("tasks")
+        .search({ status: "todo" })
+        .stream()) {
+        results.push(result);
+      }
+
+      expect(results).toHaveLength(2);
+    });
+
+    test("supports early termination", async () => {
+      const results: unknown[] = [];
+      for await (const result of piq.from("tasks").search("*").stream()) {
+        results.push(result);
+        if (results.length >= 1) break;
+      }
+
+      expect(results).toHaveLength(1);
+    });
+
+    test("respects concurrency option", async () => {
+      const results: unknown[] = [];
+      for await (const result of piq
+        .from("tasks")
+        .search("*")
+        .stream({ concurrency: 1 })) {
+        results.push(result);
+      }
+
+      expect(results).toHaveLength(3);
+    });
+
+    test("includes search params in results", async () => {
+      const results: Array<{ search: TestSearch }> = [];
+      for await (const result of piq
+        .from<TestSearch>("tasks")
+        .search({ status: "done" })
+        .stream()) {
+        results.push(result as { search: TestSearch });
+      }
+
+      expect(results[0].search).toEqual({ status: "done", name: "task-3" });
+    });
+
+    test("filters by meta constraints", async () => {
+      const results: unknown[] = [];
+      for await (const result of piq
+        .from<TestSearch, TestMeta>("tasks")
+        .search("*")
+        .filter({ category: "docs" })
+        .stream()) {
+        results.push(result);
+      }
+
+      expect(results).toHaveLength(2);
+    });
+
+    test("selects specific fields", async () => {
+      const results: Array<{ search: { name: string }; meta?: { title: string } }> = [];
+      for await (const result of piq
+        .from<TestSearch, TestMeta>("tasks")
+        .search({ name: "task-1" })
+        .select({ search: ["name"], meta: ["title"] })
+        .stream()) {
+        results.push(result as { search: { name: string }; meta?: { title: string } });
+      }
+
+      expect(results[0].search).toEqual({ name: "task-1" });
+      expect(results[0].meta).toEqual({ title: "Task 1" });
+    });
+  });
+
+  describe("fallback without scan()", () => {
+    beforeEach(() => {
+      registerCollections({
+        tasks: defineCollection({
+          searchSchema: mockSchema<TestSearch>(),
+          searchResolver: createMockSearchResolver({ withScan: false }),
+          metaSchema: mockSchema<TestMeta>(),
+          metaResolver: createMockMetaResolver(),
+        }),
+      });
+    });
+
+    test("streams results by wrapping search()", async () => {
+      const results: unknown[] = [];
+      for await (const result of piq.from("tasks").search("*").stream()) {
+        results.push(result);
+      }
+
+      expect(results).toHaveLength(3);
+    });
+
+    test("supports early termination with fallback", async () => {
+      const results: unknown[] = [];
+      for await (const result of piq.from("tasks").search("*").stream()) {
+        results.push(result);
+        if (results.length >= 1) break;
+      }
+
+      expect(results).toHaveLength(1);
+    });
   });
 });

@@ -1,7 +1,7 @@
 import { Glob } from "bun";
 import { join, relative } from "path";
-import type { SearchResolver, SearchResult } from "piqit";
-import { compilePattern, matchPattern } from "piqit";
+import type { SearchResolver } from "piqit";
+import { compilePattern, compileValidationRegex, matchPattern } from "piqit";
 
 export interface GlobResolverOptions {
   /**
@@ -20,51 +20,93 @@ export interface GlobResolverOptions {
 /**
  * Create a search resolver that uses glob patterns to find files
  * and extracts parameters from the matched paths.
+ * 
+ * Implements lazy param extraction for performance:
+ * - search() returns paths only, using fast validation regex
+ * - extractParams() extracts params on demand when needed
  */
 export function globResolver<TSearch extends Record<string, unknown>>(
   options: GlobResolverOptions
 ): SearchResolver<TSearch> {
   const { base = ".", path: pathPattern } = options;
   const compiled = compilePattern(pathPattern);
+  const validationRegex = compileValidationRegex(pathPattern);
+
+  // Cache resolved base directory
+  const getBaseDir = () => base.startsWith("/") ? base : join(process.cwd(), base);
 
   return {
-    async search(constraints?: Partial<TSearch>): Promise<SearchResult<TSearch>[]> {
-      // Resolve base directory
-      const baseDir = base.startsWith("/") ? base : join(process.cwd(), base);
+    async search(constraints?: Partial<TSearch>): Promise<string[]> {
+      const baseDir = getBaseDir();
 
       // Generate optimized glob pattern from constraints
       const globPattern = compiled.toGlob(constraints as Record<string, unknown> | undefined);
 
       // Scan for matching files
       const glob = new Glob(globPattern);
-      const results: SearchResult<TSearch>[] = [];
+      const paths: string[] = [];
 
       for await (const file of glob.scan({ cwd: baseDir, absolute: true, dot: true })) {
         // Get path relative to base for pattern matching
         const relativePath = relative(baseDir, file);
 
-        // Match against the pattern and extract params
-        const params = matchPattern(compiled, relativePath);
-
-        if (params) {
-          // Apply any additional constraint filtering
-          // (glob optimization may not capture all constraints precisely)
-          if (constraints && !matchesConstraints(params, constraints)) {
-            continue;
+        // Fast validation only - no param extraction when unconstrained
+        if (validationRegex.test(relativePath)) {
+          // When constraints are provided, we need to extract params to verify
+          if (constraints) {
+            const params = matchPattern(compiled, relativePath);
+            if (params && matchesConstraints(params, constraints)) {
+              paths.push(file);
+            }
+          } else {
+            paths.push(file);
           }
-
-          results.push({
-            path: file,
-            params: params as TSearch,
-          });
         }
       }
 
-      return results;
+      return paths;
+    },
+
+    async *scan(constraints?: Partial<TSearch>): AsyncGenerator<string> {
+      const baseDir = getBaseDir();
+
+      // Generate optimized glob pattern from constraints
+      const globPattern = compiled.toGlob(constraints as Record<string, unknown> | undefined);
+
+      // Scan for matching files, yielding one at a time
+      const glob = new Glob(globPattern);
+
+      for await (const file of glob.scan({ cwd: baseDir, absolute: true, dot: true })) {
+        // Get path relative to base for pattern matching
+        const relativePath = relative(baseDir, file);
+
+        // Fast validation only - no param extraction when unconstrained
+        if (validationRegex.test(relativePath)) {
+          // When constraints are provided, we need to extract params to verify
+          if (constraints) {
+            const params = matchPattern(compiled, relativePath);
+            if (params && matchesConstraints(params, constraints)) {
+              yield file;
+            }
+          } else {
+            yield file;
+          }
+        }
+      }
+    },
+
+    extractParams(path: string): TSearch {
+      const baseDir = getBaseDir();
+      const relativePath = relative(baseDir, path);
+      const params = matchPattern(compiled, relativePath);
+      if (!params) {
+        throw new Error(`Path does not match pattern: ${path}`);
+      }
+      return params as TSearch;
     },
 
     getPath(params: TSearch): string {
-      const baseDir = base.startsWith("/") ? base : join(process.cwd(), base);
+      const baseDir = getBaseDir();
       const tokens = tokenizePattern(pathPattern);
       let path = "";
 

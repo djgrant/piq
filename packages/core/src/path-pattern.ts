@@ -88,8 +88,55 @@ export function tokenize(pattern: string): Token[] {
 /**
  * Escape special regex characters in a string
  */
-function escapeRegex(str: string): string {
+export function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Compile a validation-only regex from a path pattern.
+ * Uses non-capturing groups for faster matching when we only need
+ * to validate if a path matches, without extracting parameters.
+ */
+export function compileValidationRegex(pattern: string): RegExp {
+  const tokens = tokenize(pattern);
+  let regexStr = "^";
+  let i = 0;
+
+  while (i < tokens.length) {
+    const token = tokens[i];
+
+    if (token.type === "literal") {
+      const nextToken = tokens[i + 1];
+      if (
+        token.value.endsWith("/") &&
+        nextToken?.type === "param" &&
+        nextToken.paramType === "optional"
+      ) {
+        const withoutSlash = token.value.slice(0, -1);
+        if (withoutSlash) regexStr += escapeRegex(withoutSlash);
+      } else {
+        regexStr += escapeRegex(token.value);
+      }
+      i++;
+    } else {
+      // Use non-capturing groups for speed
+      switch (token.paramType) {
+        case "required":
+          regexStr += "(?:[^/]+)";
+          break;
+        case "optional":
+          regexStr += "(?:/[^/]+)?";
+          break;
+        case "splat":
+          regexStr += "(?:.*)";
+          break;
+      }
+      i++;
+    }
+  }
+
+  regexStr += "$";
+  return new RegExp(regexStr);
 }
 
 /**

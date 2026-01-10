@@ -55,9 +55,21 @@ export type ExtractPathParams<P extends string> =
 export interface SearchResolver<TSearch> {
   /**
    * Find all paths matching the pattern, optionally filtered by search constraints.
-   * Returns paths with extracted parameters.
+   * Returns paths only - validates but doesn't extract params.
    */
-  search(constraints?: Partial<TSearch>): Promise<SearchResult<TSearch>[]>;
+  search(constraints?: Partial<TSearch>): Promise<string[]>;
+
+  /**
+   * Streaming search - yields paths one at a time.
+   * Optional for backward compatibility; QueryBuilder falls back to search() if unavailable.
+   */
+  scan?(constraints?: Partial<TSearch>): AsyncGenerator<string>;
+
+  /**
+   * Extract params from a path on demand.
+   * Called only when select({ search }) is used.
+   */
+  extractParams(path: string): TSearch;
 
   /**
    * Get the path for a specific set of search parameters
@@ -65,6 +77,9 @@ export interface SearchResolver<TSearch> {
   getPath?(params: TSearch): string;
 }
 
+/**
+ * @deprecated Use SearchResolver.extractParams() instead. Kept for backwards compatibility.
+ */
 export interface SearchResult<TSearch> {
   /** Absolute file path */
   path: string;

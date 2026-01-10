@@ -1,9 +1,9 @@
 import { join } from "path";
+import { z } from "zod";
 import {
   defineCollection,
   registerCollections,
   piq,
-  clearCollections,
 } from "piqit";
 import {
   globResolver,
@@ -13,41 +13,127 @@ import {
 
 const contentDir = join(import.meta.dir, "../public/content");
 
-// Define collections
+// Define collections with Zod schemas
 const posts = defineCollection({
-  searchSchema: {} as { year: string; slug: string },
+  searchSchema: z.object({ year: z.string(), slug: z.string() }),
   searchResolver: globResolver({
     base: join(contentDir, "posts"),
     path: "{year}/{slug}.md",
   }),
-  metaSchema: {} as { title: string; tags: string[]; author: string },
+  metaSchema: z.object({ title: z.string(), tags: z.array(z.string()), author: z.string() }),
   metaResolver: frontmatterResolver(),
-  bodySchema: {} as { raw: string; html: string; headings: { depth: number; text: string; slug: string }[] },
+  bodySchema: z.object({ 
+    raw: z.string(), 
+    html: z.string(), 
+    headings: z.array(z.object({ depth: z.number(), text: z.string(), slug: z.string() }))
+  }),
   bodyResolver: markdownResolver(),
 });
 
 const workPackages = defineCollection({
-  searchSchema: {} as { status: string; priority: string; name: string },
+  searchSchema: z.object({ status: z.string(), priority: z.string(), name: z.string() }),
   searchResolver: globResolver({
     base: join(contentDir, "work"),
     path: "{status}/wp-{priority}-{name}.md",
   }),
-  metaSchema: {} as { category: string; size: string },
+  metaSchema: z.object({ category: z.string(), size: z.string() }),
   metaResolver: frontmatterResolver(),
-  bodySchema: {} as { raw: string; html: string; headings: { depth: number; text: string; slug: string }[] },
+  bodySchema: z.object({ 
+    raw: z.string(), 
+    html: z.string(), 
+    headings: z.array(z.object({ depth: z.number(), text: z.string(), slug: z.string() }))
+  }),
   bodyResolver: markdownResolver(),
 });
 
 registerCollections({ posts, workPackages });
 
-// API to execute queries
+// Collections config for display in the explorer
+const collectionsConfig = `// Collections Configuration
+// Registered piq collections with Zod schemas
+
+import { z } from "zod";
+import { defineCollection } from "piqit";
+import { globResolver, frontmatterResolver, markdownResolver } from "@piqit/resolvers";
+
+export const posts = defineCollection({
+  searchSchema: z.object({ year: z.string(), slug: z.string() }),
+  searchResolver: globResolver({
+    base: "content/posts",
+    path: "{year}/{slug}.md",
+  }),
+  metaSchema: z.object({ 
+    title: z.string(), 
+    tags: z.array(z.string()), 
+    author: z.string() 
+  }),
+  metaResolver: frontmatterResolver(),
+  bodySchema: z.object({ 
+    raw: z.string(), 
+    html: z.string(), 
+    headings: z.array(z.object({ 
+      depth: z.number(), 
+      text: z.string(), 
+      slug: z.string() 
+    }))
+  }),
+  bodyResolver: markdownResolver(),
+});
+
+export const workPackages = defineCollection({
+  searchSchema: z.object({ status: z.string(), priority: z.string(), name: z.string() }),
+  searchResolver: globResolver({
+    base: "content/work",
+    path: "{status}/wp-{priority}-{name}.md",
+  }),
+  metaSchema: z.object({ category: z.string(), size: z.string() }),
+  metaResolver: frontmatterResolver(),
+  bodySchema: z.object({ 
+    raw: z.string(), 
+    html: z.string(), 
+    headings: z.array(z.object({ 
+      depth: z.number(), 
+      text: z.string(), 
+      slug: z.string() 
+    }))
+  }),
+  bodyResolver: markdownResolver(),
+});
+`;
+
+// Temp directory for query modules
+const tmpDir = join(import.meta.dir, "../.tmp");
+await Bun.write(join(tmpDir, ".gitkeep"), "");
+
+// Counter for unique temp file names
+let queryCounter = 0;
+
+// API to execute queries - writes to temp file and imports
 async function executeQuery(code: string): Promise<unknown> {
-  // Create a function that has access to piq
-  const fn = new Function(
-    "piq",
-    `return (async () => { ${code} })()`
-  );
-  return fn(piq);
+  const filename = `query-${Date.now()}-${queryCounter++}.ts`;
+  const filepath = join(tmpDir, filename);
+  
+  try {
+    // Write the query code to a temp file
+    await Bun.write(filepath, code);
+    
+    // Dynamically import the temp file
+    const module = await import(filepath);
+    
+    if (typeof module.default !== "function") {
+      throw new Error("Query must export a default async function");
+    }
+    
+    // Call the default export
+    return await module.default();
+  } finally {
+    // Clean up temp file
+    try {
+      await Bun.file(filepath).delete();
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
 }
 
 // Serve the playground
@@ -74,6 +160,13 @@ const server = Bun.serve({
     if (url.pathname === "/api/files") {
       const files = await listContentFiles();
       return Response.json(files);
+    }
+
+    // API endpoint for collections config
+    if (url.pathname === "/api/collections") {
+      return new Response(collectionsConfig, {
+        headers: { "Content-Type": "text/plain" },
+      });
     }
 
     // API endpoint for reading a file
@@ -117,18 +210,18 @@ const server = Bun.serve({
   },
 });
 
-async function listContentFiles(): Promise<{ path: string; name: string }[]> {
+async function listContentFiles(): Promise<{ path: string; name: string; type: string }[]> {
   const glob = new Bun.Glob("**/*.md");
-  const files: { path: string; name: string }[] = [];
+  const files: { path: string; name: string; type: string }[] = [];
   
   for await (const file of glob.scan({ cwd: contentDir })) {
-    files.push({ path: file, name: file.split("/").pop() || file });
+    files.push({ path: file, name: file.split("/").pop() || file, type: "content" });
   }
   
   return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-console.log(`🎮 Playground running at http://localhost:${server.port}`);
+console.log(`Playground running at http://localhost:${server.port}`);
 
 const HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -159,6 +252,7 @@ const HTML = `<!DOCTYPE html>
       font-weight: 600;
       color: #569cd6;
     }
+    .spacer { flex: 1; }
     .run-btn {
       background: #0e639c;
       color: white;
@@ -199,6 +293,7 @@ const HTML = `<!DOCTYPE html>
     }
     .file-list li:hover { background: #2a2d2e; }
     .file-list li.active { background: #094771; }
+    .file-list li.config { color: #dcdcaa; }
     .panel {
       display: flex;
       flex-direction: column;
@@ -251,11 +346,14 @@ const HTML = `<!DOCTYPE html>
 </head>
 <body>
   <header>
-    <h1>🔍 piq Playground</h1>
-    <button class="run-btn" onclick="runQuery()">▶ Run Query (Cmd+Enter)</button>
+    <h1>piq Playground</h1>
+    <div class="spacer"></div>
+    <button class="run-btn" onclick="runQuery()">Run Query (Cmd+Enter)</button>
   </header>
   <main>
     <aside class="sidebar">
+      <h2>Collections</h2>
+      <ul class="file-list" id="config-list"></ul>
       <h2>Content Files</h2>
       <ul class="file-list" id="file-list"></ul>
     </aside>
@@ -286,19 +384,91 @@ const HTML = `<!DOCTYPE html>
     let editor, fileEditor;
     let currentFile = null;
 
-    const defaultCode = \`// Available collections: posts, workPackages
-// Try these queries:
+    const defaultCode = \`// Query module - imports resolve via Bun
+import { piq } from "piqit";
 
-// List all posts
-const posts = await piq.from("posts")
-  .search("*")
-  .select({ search: ["year", "slug"], meta: ["title", "tags"] })
-  .exec();
+export default async function() {
+  const posts = await piq.from("posts")
+    .search("*")
+    .select({
+      search: ["year", "slug"],
+      meta: ["title", "tags"]
+    })
+    .exec();
 
-return posts;\`;
+  return posts;
+}\`;
 
     require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
     require(['vs/editor/editor.main'], function () {
+      // Configure TypeScript
+      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+        target: monaco.languages.typescript.ScriptTarget.ESNext,
+        module: monaco.languages.typescript.ModuleKind.ESNext,
+        moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+        allowNonTsExtensions: true,
+        strict: true,
+      });
+
+      // Add piq type declarations
+      const piqTypes = \`
+        declare module "piqit" {
+          /** Query result containing search, meta, and body data */
+          export interface QueryResult<TSearch = unknown, TMeta = unknown, TBody = unknown> {
+            path: string;
+            search: TSearch;
+            meta?: TMeta;
+            body?: TBody;
+          }
+
+          /** Query builder for collections */
+          export interface QueryBuilder<TSearch, TMeta, TBody> {
+            search(constraints: Partial<TSearch> | "*"): this;
+            filter(constraints: Partial<TMeta>): this;
+            select<
+              SKeys extends keyof TSearch = never,
+              MKeys extends keyof TMeta = never,
+              BKeys extends keyof TBody = never
+            >(spec: {
+              search?: SKeys[];
+              meta?: MKeys[];
+              body?: BKeys[];
+            }): QueryBuilder<
+              SKeys extends never ? TSearch : Pick<TSearch, SKeys>,
+              MKeys extends never ? TMeta : Pick<TMeta, MKeys>,
+              BKeys extends never ? TBody : Pick<TBody, BKeys>
+            >;
+            single(): { exec(): Promise<QueryResult<TSearch, TMeta, TBody>> };
+            exec(): Promise<QueryResult<TSearch, TMeta, TBody>[]>;
+          }
+
+          interface PostsSearch { year: string; slug: string; }
+          interface PostsMeta { title: string; tags: string[]; author: string; }
+          interface PostsBody { raw: string; html: string; headings: { depth: number; text: string; slug: string; }[]; }
+
+          interface WorkPackagesSearch { status: string; priority: string; name: string; }
+          interface WorkPackagesMeta { category: string; size: string; }
+          interface WorkPackagesBody { raw: string; html: string; headings: { depth: number; text: string; slug: string; }[]; }
+
+          interface CollectionMap {
+            posts: { search: PostsSearch; meta: PostsMeta; body: PostsBody };
+            workPackages: { search: WorkPackagesSearch; meta: WorkPackagesMeta; body: WorkPackagesBody };
+          }
+
+          type CollectionName = keyof CollectionMap;
+
+          interface Piq {
+            from<K extends CollectionName>(
+              name: K
+            ): QueryBuilder<CollectionMap[K]["search"], CollectionMap[K]["meta"], CollectionMap[K]["body"]>;
+          }
+
+          export const piq: Piq;
+        }
+      \`;
+
+      monaco.languages.typescript.typescriptDefaults.addExtraLib(piqTypes, 'node_modules/piqit/index.d.ts');
+
       editor = monaco.editor.create(document.getElementById('editor'), {
         value: defaultCode,
         language: 'typescript',
@@ -324,6 +494,9 @@ return posts;\`;
     });
 
     async function loadFiles() {
+      const configList = document.getElementById('config-list');
+      configList.innerHTML = '<li class="config" onclick="loadCollections()" title="collections.ts">collections.ts</li>';
+      
       const res = await fetch('/api/files');
       const files = await res.json();
       const list = document.getElementById('file-list');
@@ -332,11 +505,26 @@ return posts;\`;
       ).join('');
     }
 
+    async function loadCollections() {
+      const res = await fetch('/api/collections');
+      const content = await res.text();
+      currentFile = null;
+      fileEditor.setValue(content);
+      monaco.editor.setModelLanguage(fileEditor.getModel(), 'typescript');
+      
+      document.querySelectorAll('.file-list li').forEach(li => {
+        li.classList.toggle('active', li.title === 'collections.ts');
+      });
+      
+      switchTab('file');
+    }
+
     async function loadFile(path) {
       const res = await fetch('/api/file/' + path);
       const content = await res.text();
       currentFile = path;
       fileEditor.setValue(content);
+      monaco.editor.setModelLanguage(fileEditor.getModel(), 'markdown');
       
       document.querySelectorAll('.file-list li').forEach(li => {
         li.classList.toggle('active', li.title === path);
@@ -346,7 +534,10 @@ return posts;\`;
     }
 
     async function saveFile() {
-      if (!currentFile) return;
+      if (!currentFile) {
+        log('Cannot save collections.ts (read-only)', 'error');
+        return;
+      }
       const content = fileEditor.getValue();
       const res = await fetch('/api/save/' + currentFile, {
         method: 'POST',

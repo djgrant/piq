@@ -31,6 +31,7 @@ export {
 // Path pattern utilities
 export {
   compilePattern,
+  compileValidationRegex,
   matchPattern,
   buildPath,
 } from "./path-pattern";
@@ -38,3 +39,4 @@ export type { PathParam, CompiledPattern } from "./path-pattern";
 
 // Query API
 export { piq, from, QueryBuilder } from "./query";
+export type { StreamOptions } from "./query";

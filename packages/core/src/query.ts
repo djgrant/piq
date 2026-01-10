@@ -2,11 +2,48 @@ import type {
   CollectionDefinition,
   QueryResult,
   SelectSpec,
-  SearchResult,
   Wildcard,
 } from "./types";
 import { WILDCARD } from "./types";
 import { getCollection } from "./collection";
+
+/**
+ * Semaphore for concurrency control.
+ * Limits the number of concurrent async operations.
+ */
+class Semaphore {
+  private permits: number;
+  private queue: (() => void)[] = [];
+
+  constructor(permits: number) {
+    this.permits = permits;
+  }
+
+  async acquire(): Promise<void> {
+    if (this.permits > 0) {
+      this.permits--;
+      return;
+    }
+    return new Promise((resolve) => this.queue.push(resolve));
+  }
+
+  release(): void {
+    const next = this.queue.shift();
+    if (next) {
+      next();
+    } else {
+      this.permits++;
+    }
+  }
+}
+
+/**
+ * Options for streaming query execution
+ */
+export interface StreamOptions {
+  /** Maximum concurrent file operations. Default: 50 */
+  concurrency?: number;
+}
 
 /**
  * Query builder for collections.
@@ -21,6 +58,7 @@ export class QueryBuilder<
   private searchConstraints: Partial<TSearch> | Wildcard | null = null;
   private filterConstraints: Partial<TMeta> | null = null;
   private selectSpec: SelectSpec<TSearch, TMeta, TBody> | null = null;
+  private metaCache: Map<string, Partial<TMeta>> | null = null;
 
   constructor(collection: CollectionDefinition<TSearch, TMeta, TBody>) {
     this.collection = collection;
@@ -88,22 +126,182 @@ export class QueryBuilder<
    * Execute the query and return results.
    */
   async exec(): Promise<QueryResult<TSearch, TMeta, TBody>[]> {
-    // Step 1: Search - find matching paths
-    const searchResults = await this.executeSearch();
+    // Step 1: Search - find matching paths (no param extraction yet)
+    const paths = await this.executeSearch();
 
-    // Step 2: Filter by meta if needed
-    const filteredResults = await this.executeFilter(searchResults);
+    // Step 2: Pre-resolve meta if both filter and select need it
+    const metaKeys = this.getRequiredMetaKeys();
+    if (metaKeys && this.filterConstraints && this.selectSpec?.meta?.length) {
+      await this.preResolveMeta(paths, metaKeys);
+    }
 
-    // Step 3: Resolve selected layers
-    const results = await this.resolveSelected(filteredResults);
+    // Step 3: Filter by meta if needed
+    const filteredPaths = await this.executeFilter(paths);
+
+    // Step 4: Resolve selected layers (including lazy param extraction)
+    const results = await this.resolveSelected(filteredPaths);
 
     return results;
   }
 
   /**
-   * Execute search layer
+   * Execute the query as a stream, yielding results one at a time.
+   * Supports early termination and concurrency control.
+   * 
+   * @param options - Stream options including concurrency limit
    */
-  private async executeSearch(): Promise<SearchResult<TSearch>[]> {
+  async *stream(options?: StreamOptions): AsyncGenerator<QueryResult<TSearch, TMeta, TBody>> {
+    const concurrency = options?.concurrency ?? 50;
+    const semaphore = new Semaphore(concurrency);
+
+    // Get the async iterator from search resolver
+    const scanner = this.getScanner();
+
+    for await (const path of scanner) {
+      await semaphore.acquire();
+
+      try {
+        // Filter check (if applicable)
+        if (this.filterConstraints && this.collection.metaResolver) {
+          const filterKeys = Object.keys(this.filterConstraints) as (keyof TMeta)[];
+          const meta = await this.collection.metaResolver.resolve(path, filterKeys);
+
+          if (!this.matchesFilter(meta, filterKeys)) {
+            continue; // Skip non-matching, semaphore released in finally
+          }
+        }
+
+        // Resolve selected layers
+        const result = await this.resolveOne(path);
+        yield result;
+      } finally {
+        semaphore.release();
+      }
+    }
+  }
+
+  /**
+   * Get a scanner (async iterator) for paths.
+   * Uses scan() if available, otherwise wraps search() result.
+   */
+  private getScanner(): AsyncIterable<string> {
+    const constraints =
+      this.searchConstraints === WILDCARD ? undefined : this.searchConstraints ?? undefined;
+
+    // Use scan() if available, otherwise wrap search() result
+    if (this.collection.searchResolver.scan) {
+      return this.collection.searchResolver.scan(constraints as Partial<TSearch> | undefined);
+    }
+
+    // Fallback: convert search() to async iterable
+    return this.wrapSearchAsIterable(constraints as Partial<TSearch> | undefined);
+  }
+
+  /**
+   * Wrap search() results as an async generator for fallback
+   */
+  private async *wrapSearchAsIterable(
+    constraints: Partial<TSearch> | undefined
+  ): AsyncGenerator<string> {
+    const results = await this.collection.searchResolver.search(constraints);
+    for (const path of results) {
+      yield path;
+    }
+  }
+
+  /**
+   * Resolve a single path into a query result
+   */
+  private async resolveOne(path: string): Promise<QueryResult<TSearch, TMeta, TBody>> {
+    // Determine what's needed
+    const hasSelectSpec = this.selectSpec !== null;
+    const needsSearch = !hasSelectSpec ||
+      (this.selectSpec?.search && this.selectSpec.search.length > 0);
+    const needsMeta =
+      this.selectSpec?.meta && this.selectSpec.meta.length > 0;
+    const needsBody =
+      this.selectSpec?.body && this.selectSpec.body.length > 0;
+
+    const result: QueryResult<TSearch, TMeta, TBody> = {
+      path,
+      search: {} as TSearch,
+    };
+
+    // Extract params when needed
+    if (needsSearch) {
+      const params = this.collection.searchResolver.extractParams(path);
+      result.search = this.pickFields(params, this.selectSpec?.search) as TSearch;
+    }
+
+    // Resolve meta if selected
+    if (needsMeta && this.collection.metaResolver) {
+      const meta = await this.collection.metaResolver.resolve(
+        path,
+        this.selectSpec!.meta as (keyof TMeta)[]
+      );
+      result.meta = this.pickFields(meta, this.selectSpec?.meta) as TMeta;
+    }
+
+    // Resolve body if selected
+    if (needsBody && this.collection.bodyResolver) {
+      const body = await this.collection.bodyResolver.resolve(
+        path,
+        this.selectSpec!.body as (keyof TBody)[]
+      );
+      result.body = this.pickFields(body, this.selectSpec?.body) as TBody;
+    }
+
+    return result;
+  }
+
+  /**
+   * Check if meta matches filter constraints
+   */
+  private matchesFilter(meta: TMeta, filterKeys: (keyof TMeta)[]): boolean {
+    return filterKeys.every((key) => {
+      const filterValue = this.filterConstraints![key];
+      const metaValue = meta[key];
+      return metaValue === filterValue;
+    });
+  }
+
+  /**
+   * Get combined meta keys needed for both filter and select.
+   * Returns null if no meta keys are needed.
+   */
+  private getRequiredMetaKeys(): (keyof TMeta)[] | null {
+    const filterKeys = this.filterConstraints
+      ? (Object.keys(this.filterConstraints) as (keyof TMeta)[])
+      : [];
+    const selectKeys = (this.selectSpec?.meta as (keyof TMeta)[]) ?? [];
+
+    const combined = [...new Set([...filterKeys, ...selectKeys])];
+    return combined.length > 0 ? combined : null;
+  }
+
+  /**
+   * Pre-resolve meta for all paths when both filter and select need meta.
+   * Caches results for use by executeFilter and resolveSelected.
+   */
+  private async preResolveMeta(
+    paths: string[],
+    keys: (keyof TMeta)[]
+  ): Promise<void> {
+    if (!this.collection.metaResolver) return;
+
+    this.metaCache = new Map();
+    await Promise.all(
+      paths.map(async (path) => {
+        const meta = await this.collection.metaResolver!.resolve(path, keys);
+        this.metaCache!.set(path, meta);
+      })
+    );
+  }
+
+  /**
+   * Execute search layer - returns paths only for lazy extraction
+   */
+  private async executeSearch(): Promise<string[]> {
     const constraints =
       this.searchConstraints === WILDCARD ? undefined : this.searchConstraints ?? undefined;
 
@@ -113,23 +311,21 @@ export class QueryBuilder<
   /**
    * Execute filter layer (meta-based filtering)
    */
-  private async executeFilter(
-    searchResults: SearchResult<TSearch>[]
-  ): Promise<SearchResult<TSearch>[]> {
+  private async executeFilter(paths: string[]): Promise<string[]> {
     if (!this.filterConstraints || !this.collection.metaResolver) {
-      return searchResults;
+      return paths;
     }
 
     const filterKeys = Object.keys(this.filterConstraints) as (keyof TMeta)[];
-    const filtered: SearchResult<TSearch>[] = [];
+    const filtered: string[] = [];
 
-    // Resolve meta for each result and filter
+    // Resolve meta for each path and filter
     await Promise.all(
-      searchResults.map(async (result) => {
-        const meta = await this.collection.metaResolver!.resolve(
-          result.path,
-          filterKeys
-        );
+      paths.map(async (path) => {
+        // Use cache if available, otherwise resolve
+        const meta =
+          this.metaCache?.get(path) ??
+          (await this.collection.metaResolver!.resolve(path, filterKeys));
 
         // Check if all filter constraints match
         const matches = filterKeys.every((key) => {
@@ -139,7 +335,7 @@ export class QueryBuilder<
         });
 
         if (matches) {
-          filtered.push(result);
+          filtered.push(path);
         }
       })
     );
@@ -148,32 +344,55 @@ export class QueryBuilder<
   }
 
   /**
-   * Resolve selected layers for filtered results
+   * Resolve selected layers for filtered paths.
+   * Implements lazy param extraction - only extracts when search fields are needed.
+   * 
+   * Extraction happens when:
+   * - No selectSpec is provided (backwards compatible - return all params)
+   * - selectSpec.search has fields specified
+   * 
+   * Extraction is skipped when:
+   * - selectSpec is provided but search is empty or not specified
    */
   private async resolveSelected(
-    searchResults: SearchResult<TSearch>[]
+    paths: string[]
   ): Promise<QueryResult<TSearch, TMeta, TBody>[]> {
+    // Determine what's needed
+    // If no selectSpec at all, we need all search params (backwards compatible)
+    // If selectSpec exists but search is empty/undefined, skip extraction
+    const hasSelectSpec = this.selectSpec !== null;
+    const needsSearch = !hasSelectSpec || 
+      (this.selectSpec?.search && this.selectSpec.search.length > 0);
     const needsMeta =
       this.selectSpec?.meta && this.selectSpec.meta.length > 0;
     const needsBody =
       this.selectSpec?.body && this.selectSpec.body.length > 0;
 
     return Promise.all(
-      searchResults.map(async (searchResult) => {
+      paths.map(async (path) => {
         const result: QueryResult<TSearch, TMeta, TBody> = {
-          path: searchResult.path,
-          search: this.pickFields(
-            searchResult.params,
-            this.selectSpec?.search
-          ) as TSearch,
+          path,
+          search: {} as TSearch, // Default empty when not needed
         };
+
+        // Extract params when needed (backwards compatible behavior)
+        if (needsSearch) {
+          const params = this.collection.searchResolver.extractParams(path);
+          result.search = this.pickFields(
+            params,
+            this.selectSpec?.search
+          ) as TSearch;
+        }
 
         // Resolve meta if selected
         if (needsMeta && this.collection.metaResolver) {
-          const meta = await this.collection.metaResolver.resolve(
-            searchResult.path,
-            this.selectSpec!.meta as (keyof TMeta)[]
-          );
+          // Use cache if available, otherwise resolve
+          const meta =
+            this.metaCache?.get(path) ??
+            (await this.collection.metaResolver.resolve(
+              path,
+              this.selectSpec!.meta as (keyof TMeta)[]
+            ));
           result.meta = this.pickFields(
             meta,
             this.selectSpec?.meta
@@ -183,7 +402,7 @@ export class QueryBuilder<
         // Resolve body if selected
         if (needsBody && this.collection.bodyResolver) {
           const body = await this.collection.bodyResolver.resolve(
-            searchResult.path,
+            path,
             this.selectSpec!.body as (keyof TBody)[]
           );
           result.body = this.pickFields(

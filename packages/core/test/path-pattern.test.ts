@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { compilePattern, matchPattern, buildPath } from "../src/path-pattern";
+import { compilePattern, compileValidationRegex, matchPattern, buildPath } from "../src/path-pattern";
 
 describe("compilePattern", () => {
   test("compiles simple required param", () => {
@@ -198,5 +198,75 @@ describe("toGlob", () => {
     const glob = compiled.toGlob();
 
     expect(glob).toBe("content/**");
+  });
+});
+
+describe("compileValidationRegex", () => {
+  test("validates simple required param pattern", () => {
+    const regex = compileValidationRegex("{slug}.md");
+
+    expect(regex.test("hello-world.md")).toBe(true);
+    expect(regex.test("hello.md")).toBe(true);
+    expect(regex.test("hello")).toBe(false);
+    expect(regex.test("dir/hello.md")).toBe(false);
+  });
+
+  test("validates pattern with static prefix", () => {
+    const regex = compileValidationRegex("posts/{slug}.md");
+
+    expect(regex.test("posts/my-post.md")).toBe(true);
+    expect(regex.test("pages/my-post.md")).toBe(false);
+    expect(regex.test("my-post.md")).toBe(false);
+  });
+
+  test("validates multiple required params", () => {
+    const regex = compileValidationRegex("{year}/{month}/{slug}.md");
+
+    expect(regex.test("2024/01/new-year.md")).toBe(true);
+    expect(regex.test("2024/new-year.md")).toBe(false);
+  });
+
+  test("validates optional param when present", () => {
+    const regex = compileValidationRegex("posts/{?date}/{slug}.md");
+
+    expect(regex.test("posts/2024-01-01/new-year.md")).toBe(true);
+    expect(regex.test("posts/new-year.md")).toBe(true);
+  });
+
+  test("validates splat param", () => {
+    const regex = compileValidationRegex("content/{...rest}");
+
+    expect(regex.test("content/deep/nested/path.md")).toBe(true);
+    expect(regex.test("content/")).toBe(true);
+    expect(regex.test("content/file.md")).toBe(true);
+    expect(regex.test("other/path")).toBe(false);
+  });
+
+  test("uses non-capturing groups (faster than capturing)", () => {
+    const regex = compileValidationRegex("{year}/{slug}.md");
+    const match = "2024/hello.md".match(regex);
+
+    // Non-capturing groups don't populate match array with captured values
+    // Only the full match should be present
+    expect(match).not.toBeNull();
+    expect(match!.length).toBe(1); // Only the full match, no capture groups
+  });
+
+  test("produces equivalent validation to compilePattern regex", () => {
+    const pattern = "{status}/{?date}/wp-{priority}-{name}.md";
+    const validationRegex = compileValidationRegex(pattern);
+    const captureRegex = compilePattern(pattern).regex;
+
+    const paths = [
+      "todo/wp-1-build-feature.md",
+      "in-progress/2024-01-08/wp-2-refactor.md",
+      "done/wp-3-cleanup.md",
+      "invalid.md",
+      "todo/extra/wp-1-test.md",
+    ];
+
+    for (const path of paths) {
+      expect(validationRegex.test(path)).toBe(captureRegex.test(path));
+    }
   });
 });
