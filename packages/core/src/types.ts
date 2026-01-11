@@ -1,180 +1,139 @@
 /**
- * Standard Schema interface for validator compatibility.
- * Works with Zod, Valibot, ArkType, etc.
+ * piq v2 Core Types
+ *
+ * These types establish the contract between piq core and resolvers.
+ * The resolver owns schemas; piq owns query shape and result transformation.
+ */
+
+// =============================================================================
+// StandardSchema Interface (for Zod/Valibot compatibility)
+// =============================================================================
+
+/**
+ * Result of a StandardSchema validation
+ */
+export type StandardSchemaResult<T> =
+  | { readonly value: T; readonly issues?: undefined }
+  | { readonly value?: undefined; readonly issues: readonly StandardSchemaIssue[] }
+
+/**
+ * A validation issue from StandardSchema
+ */
+export interface StandardSchemaIssue {
+  readonly message: string
+  readonly path?: readonly (string | number | symbol)[]
+}
+
+/**
+ * StandardSchema interface for interoperability with Zod, Valibot, etc.
+ * @see https://github.com/standard-schema/standard-schema
  */
 export interface StandardSchema<T = unknown> {
   readonly "~standard": {
-    readonly version: 1;
-    readonly vendor: string;
-    readonly validate: (value: unknown) => StandardSchemaResult<T>;
-  };
-  readonly "~types"?: {
-    readonly input: unknown;
-    readonly output: T;
-  };
-}
-
-export interface StandardSchemaResult<T> {
-  readonly value?: T;
-  readonly issues?: readonly StandardSchemaIssue[];
-}
-
-export interface StandardSchemaIssue {
-  readonly message: string;
-  readonly path?: readonly (string | number)[];
+    readonly version: 1
+    readonly vendor: string
+    readonly validate: (value: unknown) => StandardSchemaResult<T>
+  }
 }
 
 /**
- * Infer the output type from a Standard Schema
+ * Infer the output type from a StandardSchema
  */
-export type InferSchema<S> = S extends StandardSchema<infer T> ? T : never;
+export type Infer<S> = S extends StandardSchema<infer T> ? T : never
+
+// =============================================================================
+// Type Utilities (from select-types.ts)
+// =============================================================================
+
+export type {
+  SelectablePaths,
+  GetFieldName,
+  GetPathValue,
+  ExpandWildcard,
+  HasCollision,
+  Undot,
+  UndotWithAliases,
+  ExpandAllWildcards,
+  ValidateSelect
+} from "./select-types"
+
+import type { SelectablePaths } from "./select-types"
+
+// =============================================================================
+// QuerySpec
+// =============================================================================
 
 /**
- * Path pattern syntax:
- * - {param} — required parameter
- * - {?param} — optional parameter
- * - {...param} — splat/rest (captures remaining segments)
+ * Specification for a query against a resolver.
+ *
+ * @template TScan - The type of scan parameters (glob patterns, etc.)
+ * @template TFilter - The type of filter parameters (predicates)
+ * @template TSelect - The selectable paths as a string union
  */
-export type PathPattern = string;
-
-/**
- * Extract parameter names from a path pattern
- */
-export type ExtractPathParams<P extends string> =
-  P extends `${string}{...${infer Param}}${infer Rest}`
-    ? Param | ExtractPathParams<Rest>
-    : P extends `${string}{?${infer Param}}${infer Rest}`
-      ? Param | ExtractPathParams<Rest>
-      : P extends `${string}{${infer Param}}${infer Rest}`
-        ? Param | ExtractPathParams<Rest>
-        : never;
-
-/**
- * Search resolver interface - finds matching paths without file I/O
- */
-export interface SearchResolver<TSearch> {
+export interface QuerySpec<TScan, TFilter, TSelect extends string> {
   /**
-   * Find all paths matching the pattern, optionally filtered by search constraints.
-   * Returns paths only - validates but doesn't extract params.
+   * Parameters for the initial scan phase (e.g., glob patterns).
+   * These narrow down which files/items to consider.
    */
-  search(constraints?: Partial<TSearch>): Promise<string[]>;
+  scan?: Partial<TScan>
 
   /**
-   * Streaming search - yields paths one at a time.
-   * Optional for backward compatibility; QueryBuilder falls back to search() if unavailable.
+   * Parameters for filtering scanned items.
+   * Applied after scan to further reduce the result set.
    */
-  scan?(constraints?: Partial<TSearch>): AsyncGenerator<string>;
+  filter?: Partial<TFilter>
 
   /**
-   * Extract params from a path on demand.
-   * Called only when select({ search }) is used.
+   * Fields to include in the result using dot-notation paths.
+   * e.g., ["frontmatter.title", "params.slug", "body.content"]
    */
-  extractParams(path: string): TSearch;
-
-  /**
-   * Get the path for a specific set of search parameters
-   */
-  getPath?(params: TSearch): string;
+  select: TSelect[]
 }
 
-/**
- * @deprecated Use SearchResolver.extractParams() instead. Kept for backwards compatibility.
- */
-export interface SearchResult<TSearch> {
-  /** Absolute file path */
-  path: string;
-  /** Extracted search parameters from the path */
-  params: TSearch;
-}
+// =============================================================================
+// Resolver Interface
+// =============================================================================
 
 /**
- * Meta resolver interface - reads metadata from files (light I/O)
+ * A resolver that can query a data source and return typed results.
+ *
+ * The resolver owns its schemas:
+ * - scanParams: What parameters control the initial scan (e.g., glob patterns)
+ * - filterParams: What parameters filter the results (e.g., predicates)
+ * - result: The namespaced shape of results { params: {...}, frontmatter: {...}, body: {...} }
+ *
+ * @template TScanSchema - StandardSchema for scan parameters
+ * @template TFilterSchema - StandardSchema for filter parameters
+ * @template TResultSchema - StandardSchema for the namespaced result shape
  */
-export interface MetaResolver<TMeta> {
-  /**
-   * Read metadata from a file path.
-   * Should be optimized for light I/O (e.g., read only frontmatter).
-   * 
-   * @param path - Absolute file path
-   * @param fields - Optional subset of fields to read (for early-stop optimization)
-   */
-  resolve(path: string, fields?: (keyof TMeta)[]): Promise<TMeta>;
-}
-
-/**
- * Body resolver interface - reads and parses full content (heavy I/O)
- */
-export interface BodyResolver<TBody> {
-  /**
-   * Read and parse the body content from a file.
-   * 
-   * @param path - Absolute file path
-   * @param fields - Optional subset of fields to compute
-   */
-  resolve(path: string, fields?: (keyof TBody)[]): Promise<TBody>;
-}
-
-/**
- * Collection definition with three-layer schema
- */
-export interface CollectionDefinition<
-  TSearch = unknown,
-  TMeta = unknown,
-  TBody = unknown,
+export interface Resolver<
+  TScanSchema extends StandardSchema,
+  TFilterSchema extends StandardSchema,
+  TResultSchema extends StandardSchema
 > {
-  /** Schema for search layer (path-extracted fields) */
-  searchSchema: StandardSchema<TSearch>;
-  /** Resolver for search layer */
-  searchResolver: SearchResolver<TSearch>;
+  /**
+   * The schemas that define this resolver's contract.
+   */
+  schema: {
+    /** Schema for scan parameters */
+    scanParams: TScanSchema
+    /** Schema for filter parameters */
+    filterParams: TFilterSchema
+    /** Schema for result shape (namespaced: { params: {...}, frontmatter: {...}, body: {...} }) */
+    result: TResultSchema
+  }
 
-  /** Schema for meta layer (frontmatter/light metadata) */
-  metaSchema?: StandardSchema<TMeta>;
-  /** Resolver for meta layer */
-  metaResolver?: MetaResolver<TMeta>;
-
-  /** Schema for body layer (parsed content) */
-  bodySchema?: StandardSchema<TBody>;
-  /** Resolver for body layer */
-  bodyResolver?: BodyResolver<TBody>;
+  /**
+   * Execute a query against this resolver.
+   *
+   * @param spec - The query specification with scan, filter, and select parameters
+   * @returns A promise resolving to an array of partial results based on selected fields
+   */
+  resolve(
+    spec: QuerySpec<
+      Infer<TScanSchema>,
+      Infer<TFilterSchema>,
+      SelectablePaths<Infer<TResultSchema>>
+    >
+  ): Promise<Partial<Infer<TResultSchema>>[]>
 }
-
-/**
- * Registry of defined collections
- */
-export type CollectionRegistry = Record<
-  string,
-  CollectionDefinition<unknown, unknown, unknown>
->;
-
-/**
- * Query result shape - namespaced by layer
- */
-export interface QueryResult<
-  TSearch = unknown,
-  TMeta = unknown,
-  TBody = unknown,
-> {
-  /** Absolute file path */
-  path: string;
-  /** Search layer data (from path parsing) */
-  search: TSearch;
-  /** Meta layer data (from frontmatter) */
-  meta?: TMeta;
-  /** Body layer data (from content parsing) */
-  body?: TBody;
-}
-
-/**
- * Select specification for query
- */
-export interface SelectSpec<TSearch, TMeta, TBody> {
-  search?: (keyof TSearch)[];
-  meta?: (keyof TMeta)[];
-  body?: (keyof TBody)[];
-}
-
-/**
- * Wildcard search indicator
- */
-export const WILDCARD = "*" as const;
-export type Wildcard = typeof WILDCARD;

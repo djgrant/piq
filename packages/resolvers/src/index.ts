@@ -1,15 +1,58 @@
-// Glob resolver
-export { globResolver } from "./glob-resolver";
-export type { GlobResolverOptions } from "./glob-resolver";
+/**
+ * @piqit/resolvers - Resolver implementations for piq v2
+ *
+ * Provides filesystem resolvers for querying structured content:
+ * - fileMarkdown: Query markdown files with frontmatter
+ *
+ * @packageDocumentation
+ */
 
-// Frontmatter resolver
-export { frontmatterResolver, readFrontmatterStreaming } from "./frontmatter-resolver";
-export type { FrontmatterResolverOptions } from "./frontmatter-resolver";
+// =============================================================================
+// Main Resolver
+// =============================================================================
 
-// Markdown resolver
-export { markdownResolver } from "./markdown-resolver";
+export { fileMarkdown } from "./file-markdown"
+export type { FileMarkdownOptions, FileMarkdownResult } from "./file-markdown"
+
+// =============================================================================
+// Path Pattern Utilities
+// =============================================================================
+
+export { compilePattern, createParamsSchema } from "./path-pattern"
 export type {
-  MarkdownResolverOptions,
-  MarkdownBody,
+  CompiledPattern,
+  ExtractParams,
+  PathParams,
+} from "./path-pattern"
+
+// =============================================================================
+// Frontmatter Utilities
+// =============================================================================
+
+export {
+  parseFrontmatter,
+  extractFrontmatterString,
+  getFrontmatterEndOffset,
+  readFrontmatter,
+  readFrontmatterWithOffset,
+} from "./frontmatter"
+
+// =============================================================================
+// Markdown Utilities
+// =============================================================================
+
+export {
+  parseMarkdownBody,
+  extractHeadings,
+  slugify,
+  markdownToHtml,
+  readMarkdownBody,
+  readParsedBody,
+} from "./markdown"
+
+export type {
+  BodyOptions,
+  BodyResult,
+  BodyShape,
   Heading,
-} from "./markdown-resolver";
+} from "./markdown"

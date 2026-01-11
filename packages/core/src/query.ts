@@ -1,492 +1,287 @@
+/**
+ * piq v2 Query Builder
+ *
+ * Fluent API for building and executing queries against resolvers.
+ */
+
 import type {
-  CollectionDefinition,
-  QueryResult,
-  SelectSpec,
-  Wildcard,
-} from "./types";
-import { WILDCARD } from "./types";
-import { getCollection } from "./collection";
+  Resolver,
+  StandardSchema,
+  Infer,
+  QuerySpec,
+  SelectablePaths,
+  HasCollision,
+  Undot,
+  UndotWithAliases,
+} from "./types"
+import { getResolver, type Registry } from "./registry"
+import { undot, undotWithAliases } from "./undot"
+
+// =============================================================================
+// Type Helpers
+// =============================================================================
+
+/** Extract the result type from a resolver */
+type ResolverResult<R> = R extends Resolver<any, any, infer TResult>
+  ? Infer<TResult>
+  : never
+
+/** Extract the scan params type from a resolver */
+type ResolverScan<R> = R extends Resolver<infer TScan, any, any> ? Infer<TScan> : never
+
+/** Extract the filter params type from a resolver */
+type ResolverFilter<R> = R extends Resolver<any, infer TFilter, any>
+  ? Infer<TFilter>
+  : never
+
+// =============================================================================
+// QueryBuilder
+// =============================================================================
 
 /**
- * Semaphore for concurrency control.
- * Limits the number of concurrent async operations.
- */
-class Semaphore {
-  private permits: number;
-  private queue: (() => void)[] = [];
-
-  constructor(permits: number) {
-    this.permits = permits;
-  }
-
-  async acquire(): Promise<void> {
-    if (this.permits > 0) {
-      this.permits--;
-      return;
-    }
-    return new Promise((resolve) => this.queue.push(resolve));
-  }
-
-  release(): void {
-    const next = this.queue.shift();
-    if (next) {
-      next();
-    } else {
-      this.permits++;
-    }
-  }
-}
-
-/**
- * Options for streaming query execution
- */
-export interface StreamOptions {
-  /** Maximum concurrent file operations. Default: 50 */
-  concurrency?: number;
-}
-
-/**
- * Query builder for collections.
- * Implements a fluent API inspired by PostgREST.
+ * Fluent query builder for piq queries.
+ *
+ * @template TResolver - The resolver type
+ * @template TResult - The result type (defaults to resolver's result, changes after select)
  */
 export class QueryBuilder<
-  TSearch = unknown,
-  TMeta = unknown,
-  TBody = unknown,
+  TResolver extends Resolver<StandardSchema, StandardSchema, StandardSchema>,
+  TResult = ResolverResult<TResolver>
 > {
-  private collection: CollectionDefinition<TSearch, TMeta, TBody>;
-  private searchConstraints: Partial<TSearch> | Wildcard | null = null;
-  private filterConstraints: Partial<TMeta> | null = null;
-  private selectSpec: SelectSpec<TSearch, TMeta, TBody> | null = null;
-  private metaCache: Map<string, Partial<TMeta>> | null = null;
+  private resolver: TResolver
+  private _scanConstraints?: Partial<ResolverScan<TResolver>>
+  private _filterConstraints?: Partial<ResolverFilter<TResolver>>
+  private _selectPaths?: string[]
+  private _selectAliases?: Record<string, string>
 
-  constructor(collection: CollectionDefinition<TSearch, TMeta, TBody>) {
-    this.collection = collection;
+  constructor(resolver: TResolver) {
+    this.resolver = resolver
   }
 
+  // ===========================================================================
+  // Scan Phase
+  // ===========================================================================
+
   /**
-   * Set search constraints (applied to path pattern matching).
-   * Use "*" for wildcard (match all).
+   * Set scan constraints to narrow the initial data set.
+   *
+   * @param constraints - Partial scan parameters
+   * @returns This builder for chaining
    */
-  search(constraints: Partial<TSearch> | Wildcard): this {
-    this.searchConstraints = constraints;
-    return this;
+  scan(constraints: Partial<ResolverScan<TResolver>>): this {
+    this._scanConstraints = { ...this._scanConstraints, ...constraints }
+    return this
   }
 
+  // ===========================================================================
+  // Filter Phase
+  // ===========================================================================
+
   /**
-   * Set filter constraints (applied to meta layer after search).
-   * Requires metaResolver to be defined.
+   * Set filter constraints to further narrow results.
+   *
+   * @param constraints - Partial filter parameters
+   * @returns This builder for chaining
    */
-  filter(constraints: Partial<TMeta>): this {
-    if (!this.collection.metaResolver) {
-      throw new Error(
-        "Cannot use filter() without a metaResolver defined on the collection"
-      );
-    }
-    this.filterConstraints = constraints;
-    return this;
+  filter(constraints: Partial<ResolverFilter<TResolver>>): this {
+    this._filterConstraints = { ...this._filterConstraints, ...constraints }
+    return this
   }
 
-  /**
-   * Specify which fields to select from each layer.
-   * Only specified layers will be resolved.
-   */
-  select<
-    SKeys extends keyof TSearch = never,
-    MKeys extends keyof TMeta = never,
-    BKeys extends keyof TBody = never,
-  >(
-    spec: {
-      search?: SKeys[];
-      meta?: MKeys[];
-      body?: BKeys[];
-    }
-  ): QueryBuilder<
-    SKeys extends never ? TSearch : Pick<TSearch, SKeys>,
-    MKeys extends never ? TMeta : Pick<TMeta, MKeys>,
-    BKeys extends never ? TBody : Pick<TBody, BKeys>
-  > {
-    this.selectSpec = spec as SelectSpec<TSearch, TMeta, TBody>;
-    // Return this with narrowed types (cast needed for type narrowing)
-    return this as unknown as QueryBuilder<
-      SKeys extends never ? TSearch : Pick<TSearch, SKeys>,
-      MKeys extends never ? TMeta : Pick<TMeta, MKeys>,
-      BKeys extends never ? TBody : Pick<TBody, BKeys>
-    >;
-  }
+  // ===========================================================================
+  // Select Phase
+  // ===========================================================================
 
   /**
-   * Expect exactly one result. Throws if zero or more than one.
+   * Select specific fields using dot-paths (variadic form).
+   *
+   * @param paths - Dot-paths to select (e.g., 'params.slug', 'frontmatter.title')
+   * @returns A new builder with typed result
+   *
+   * @example
+   * query.select('params.slug', 'frontmatter.title')
+   * // Result: { slug: string; title: string }
    */
-  single(): SingleQueryBuilder<TSearch, TMeta, TBody> {
-    return new SingleQueryBuilderImpl(this);
-  }
+  select<P extends SelectablePaths<ResolverResult<TResolver>>[]>(
+    ...paths: P & (HasCollision<P> extends true ? never : P)
+  ): QueryBuilder<TResolver, Undot<ResolverResult<TResolver>, P>>
 
   /**
-   * Execute the query and return results.
+   * Select specific fields using an alias object.
+   *
+   * @param aliases - Map of alias names to dot-paths
+   * @returns A new builder with typed result
+   *
+   * @example
+   * query.select({ mySlug: 'params.slug', myTitle: 'frontmatter.title' })
+   * // Result: { mySlug: string; myTitle: string }
    */
-  async exec(): Promise<QueryResult<TSearch, TMeta, TBody>[]> {
-    // Step 1: Search - find matching paths (no param extraction yet)
-    const paths = await this.executeSearch();
+  select<O extends Record<string, SelectablePaths<ResolverResult<TResolver>>>>(
+    aliases: O
+  ): QueryBuilder<TResolver, UndotWithAliases<ResolverResult<TResolver>, O>>
 
-    // Step 2: Pre-resolve meta if both filter and select need it
-    const metaKeys = this.getRequiredMetaKeys();
-    if (metaKeys && this.filterConstraints && this.selectSpec?.meta?.length) {
-      await this.preResolveMeta(paths, metaKeys);
-    }
+  // Implementation
+  select(
+    ...args: string[] | [Record<string, string>]
+  ): QueryBuilder<TResolver, any> {
+    // Create a new builder to maintain immutability
+    const newBuilder = new QueryBuilder<TResolver, any>(this.resolver)
+    newBuilder._scanConstraints = this._scanConstraints
+    newBuilder._filterConstraints = this._filterConstraints
 
-    // Step 3: Filter by meta if needed
-    const filteredPaths = await this.executeFilter(paths);
-
-    // Step 4: Resolve selected layers (including lazy param extraction)
-    const results = await this.resolveSelected(filteredPaths);
-
-    return results;
-  }
-
-  /**
-   * Execute the query as a stream, yielding results one at a time.
-   * Supports early termination and concurrency control.
-   * 
-   * @param options - Stream options including concurrency limit
-   */
-  async *stream(options?: StreamOptions): AsyncGenerator<QueryResult<TSearch, TMeta, TBody>> {
-    const concurrency = options?.concurrency ?? 50;
-    const semaphore = new Semaphore(concurrency);
-
-    // Get the async iterator from search resolver
-    const scanner = this.getScanner();
-
-    for await (const path of scanner) {
-      await semaphore.acquire();
-
-      try {
-        // Filter check (if applicable)
-        if (this.filterConstraints && this.collection.metaResolver) {
-          const filterKeys = Object.keys(this.filterConstraints) as (keyof TMeta)[];
-          const meta = await this.collection.metaResolver.resolve(path, filterKeys);
-
-          if (!this.matchesFilter(meta, filterKeys)) {
-            continue; // Skip non-matching, semaphore released in finally
-          }
-        }
-
-        // Resolve selected layers
-        const result = await this.resolveOne(path);
-        yield result;
-      } finally {
-        semaphore.release();
-      }
-    }
-  }
-
-  /**
-   * Get a scanner (async iterator) for paths.
-   * Uses scan() if available, otherwise wraps search() result.
-   */
-  private getScanner(): AsyncIterable<string> {
-    const constraints =
-      this.searchConstraints === WILDCARD ? undefined : this.searchConstraints ?? undefined;
-
-    // Use scan() if available, otherwise wrap search() result
-    if (this.collection.searchResolver.scan) {
-      return this.collection.searchResolver.scan(constraints as Partial<TSearch> | undefined);
+    if (args.length === 1 && typeof args[0] === "object" && !Array.isArray(args[0])) {
+      // Object form (aliases)
+      newBuilder._selectAliases = args[0] as Record<string, string>
+    } else {
+      // Variadic form
+      newBuilder._selectPaths = args as string[]
     }
 
-    // Fallback: convert search() to async iterable
-    return this.wrapSearchAsIterable(constraints as Partial<TSearch> | undefined);
+    return newBuilder
+  }
+
+  // ===========================================================================
+  // Execution
+  // ===========================================================================
+
+  /**
+   * Execute the query and return all results.
+   *
+   * @returns Promise resolving to array of typed results
+   */
+  async exec(): Promise<TResult[]> {
+    const selectPaths = this.getSelectPaths()
+
+    const spec: QuerySpec<
+      ResolverScan<TResolver>,
+      ResolverFilter<TResolver>,
+      string
+    > = {
+      scan: this._scanConstraints,
+      filter: this._filterConstraints,
+      select: selectPaths,
+    }
+
+    const rawResults = await this.resolver.resolve(spec as any)
+
+    // Transform results based on select mode
+    if (this._selectAliases) {
+      return rawResults.map((r) =>
+        undotWithAliases(r as Record<string, unknown>, this._selectAliases!)
+      ) as TResult[]
+    }
+
+    if (this._selectPaths) {
+      return rawResults.map((r) =>
+        undot(r as Record<string, unknown>, this._selectPaths!)
+      ) as TResult[]
+    }
+
+    // No select - return raw results
+    return rawResults as TResult[]
   }
 
   /**
-   * Wrap search() results as an async generator for fallback
+   * Execute the query and return a single result.
+   *
+   * @returns A SingleQueryBuilder for accessing the first result
    */
-  private async *wrapSearchAsIterable(
-    constraints: Partial<TSearch> | undefined
-  ): AsyncGenerator<string> {
-    const results = await this.collection.searchResolver.search(constraints);
-    for (const path of results) {
-      yield path;
+  single(): SingleQueryBuilder<TResult> {
+    return new SingleQueryBuilder(this)
+  }
+
+  /**
+   * Execute the query and stream results.
+   *
+   * @returns AsyncGenerator yielding typed results one at a time
+   */
+  async *stream(): AsyncGenerator<TResult, void, unknown> {
+    const results = await this.exec()
+    for (const result of results) {
+      yield result
     }
   }
 
-  /**
-   * Resolve a single path into a query result
-   */
-  private async resolveOne(path: string): Promise<QueryResult<TSearch, TMeta, TBody>> {
-    // Determine what's needed
-    const hasSelectSpec = this.selectSpec !== null;
-    const needsSearch = !hasSelectSpec ||
-      (this.selectSpec?.search && this.selectSpec.search.length > 0);
-    const needsMeta =
-      this.selectSpec?.meta && this.selectSpec.meta.length > 0;
-    const needsBody =
-      this.selectSpec?.body && this.selectSpec.body.length > 0;
+  // ===========================================================================
+  // Internal
+  // ===========================================================================
 
-    const result: QueryResult<TSearch, TMeta, TBody> = {
-      path,
-      search: {} as TSearch,
-    };
-
-    // Extract params when needed
-    if (needsSearch) {
-      const params = this.collection.searchResolver.extractParams(path);
-      result.search = this.pickFields(params, this.selectSpec?.search) as TSearch;
+  private getSelectPaths(): string[] {
+    if (this._selectPaths) {
+      return this._selectPaths
     }
-
-    // Resolve meta if selected
-    if (needsMeta && this.collection.metaResolver) {
-      const meta = await this.collection.metaResolver.resolve(
-        path,
-        this.selectSpec!.meta as (keyof TMeta)[]
-      );
-      result.meta = this.pickFields(meta, this.selectSpec?.meta) as TMeta;
+    if (this._selectAliases) {
+      return Object.values(this._selectAliases)
     }
-
-    // Resolve body if selected
-    if (needsBody && this.collection.bodyResolver) {
-      const body = await this.collection.bodyResolver.resolve(
-        path,
-        this.selectSpec!.body as (keyof TBody)[]
-      );
-      result.body = this.pickFields(body, this.selectSpec?.body) as TBody;
-    }
-
-    return result;
-  }
-
-  /**
-   * Check if meta matches filter constraints
-   */
-  private matchesFilter(meta: TMeta, filterKeys: (keyof TMeta)[]): boolean {
-    return filterKeys.every((key) => {
-      const filterValue = this.filterConstraints![key];
-      const metaValue = meta[key];
-      return metaValue === filterValue;
-    });
-  }
-
-  /**
-   * Get combined meta keys needed for both filter and select.
-   * Returns null if no meta keys are needed.
-   */
-  private getRequiredMetaKeys(): (keyof TMeta)[] | null {
-    const filterKeys = this.filterConstraints
-      ? (Object.keys(this.filterConstraints) as (keyof TMeta)[])
-      : [];
-    const selectKeys = (this.selectSpec?.meta as (keyof TMeta)[]) ?? [];
-
-    const combined = [...new Set([...filterKeys, ...selectKeys])];
-    return combined.length > 0 ? combined : null;
-  }
-
-  /**
-   * Pre-resolve meta for all paths when both filter and select need meta.
-   * Caches results for use by executeFilter and resolveSelected.
-   */
-  private async preResolveMeta(
-    paths: string[],
-    keys: (keyof TMeta)[]
-  ): Promise<void> {
-    if (!this.collection.metaResolver) return;
-
-    this.metaCache = new Map();
-    await Promise.all(
-      paths.map(async (path) => {
-        const meta = await this.collection.metaResolver!.resolve(path, keys);
-        this.metaCache!.set(path, meta);
-      })
-    );
-  }
-
-  /**
-   * Execute search layer - returns paths only for lazy extraction
-   */
-  private async executeSearch(): Promise<string[]> {
-    const constraints =
-      this.searchConstraints === WILDCARD ? undefined : this.searchConstraints ?? undefined;
-
-    return this.collection.searchResolver.search(constraints as Partial<TSearch> | undefined);
-  }
-
-  /**
-   * Execute filter layer (meta-based filtering)
-   */
-  private async executeFilter(paths: string[]): Promise<string[]> {
-    if (!this.filterConstraints || !this.collection.metaResolver) {
-      return paths;
-    }
-
-    const filterKeys = Object.keys(this.filterConstraints) as (keyof TMeta)[];
-    const filtered: string[] = [];
-
-    // Resolve meta for each path and filter
-    await Promise.all(
-      paths.map(async (path) => {
-        // Use cache if available, otherwise resolve
-        const meta =
-          this.metaCache?.get(path) ??
-          (await this.collection.metaResolver!.resolve(path, filterKeys));
-
-        // Check if all filter constraints match
-        const matches = filterKeys.every((key) => {
-          const filterValue = this.filterConstraints![key];
-          const metaValue = meta[key];
-          return metaValue === filterValue;
-        });
-
-        if (matches) {
-          filtered.push(path);
-        }
-      })
-    );
-
-    return filtered;
-  }
-
-  /**
-   * Resolve selected layers for filtered paths.
-   * Implements lazy param extraction - only extracts when search fields are needed.
-   * 
-   * Extraction happens when:
-   * - No selectSpec is provided (backwards compatible - return all params)
-   * - selectSpec.search has fields specified
-   * 
-   * Extraction is skipped when:
-   * - selectSpec is provided but search is empty or not specified
-   */
-  private async resolveSelected(
-    paths: string[]
-  ): Promise<QueryResult<TSearch, TMeta, TBody>[]> {
-    // Determine what's needed
-    // If no selectSpec at all, we need all search params (backwards compatible)
-    // If selectSpec exists but search is empty/undefined, skip extraction
-    const hasSelectSpec = this.selectSpec !== null;
-    const needsSearch = !hasSelectSpec || 
-      (this.selectSpec?.search && this.selectSpec.search.length > 0);
-    const needsMeta =
-      this.selectSpec?.meta && this.selectSpec.meta.length > 0;
-    const needsBody =
-      this.selectSpec?.body && this.selectSpec.body.length > 0;
-
-    return Promise.all(
-      paths.map(async (path) => {
-        const result: QueryResult<TSearch, TMeta, TBody> = {
-          path,
-          search: {} as TSearch, // Default empty when not needed
-        };
-
-        // Extract params when needed (backwards compatible behavior)
-        if (needsSearch) {
-          const params = this.collection.searchResolver.extractParams(path);
-          result.search = this.pickFields(
-            params,
-            this.selectSpec?.search
-          ) as TSearch;
-        }
-
-        // Resolve meta if selected
-        if (needsMeta && this.collection.metaResolver) {
-          // Use cache if available, otherwise resolve
-          const meta =
-            this.metaCache?.get(path) ??
-            (await this.collection.metaResolver.resolve(
-              path,
-              this.selectSpec!.meta as (keyof TMeta)[]
-            ));
-          result.meta = this.pickFields(
-            meta,
-            this.selectSpec?.meta
-          ) as TMeta;
-        }
-
-        // Resolve body if selected
-        if (needsBody && this.collection.bodyResolver) {
-          const body = await this.collection.bodyResolver.resolve(
-            path,
-            this.selectSpec!.body as (keyof TBody)[]
-          );
-          result.body = this.pickFields(
-            body,
-            this.selectSpec?.body
-          ) as TBody;
-        }
-
-        return result;
-      })
-    );
-  }
-
-  /**
-   * Pick specific fields from an object
-   */
-  private pickFields<T>(
-    obj: T,
-    fields?: (keyof T)[]
-  ): Partial<T> | T {
-    if (!fields || fields.length === 0) {
-      return obj;
-    }
-
-    const picked: Partial<T> = {};
-    for (const field of fields) {
-      if (field in (obj as object)) {
-        picked[field] = obj[field];
-      }
-    }
-    return picked;
+    // No select specified - this would need to select all fields
+    // For now, throw an error
+    throw new Error("No select specified. Use .select() to specify fields to retrieve.")
   }
 }
 
-/**
- * Single result query builder interface
- */
-export interface SingleQueryBuilder<TSearch, TMeta, TBody> {
-  exec(): Promise<QueryResult<TSearch, TMeta, TBody>>;
-}
+// =============================================================================
+// SingleQueryBuilder
+// =============================================================================
 
 /**
- * Implementation of single query builder
+ * Builder for single-result queries.
+ *
+ * @template TResult - The result type
  */
-class SingleQueryBuilderImpl<TSearch, TMeta, TBody>
-  implements SingleQueryBuilder<TSearch, TMeta, TBody>
-{
-  private builder: QueryBuilder<TSearch, TMeta, TBody>;
+export class SingleQueryBuilder<TResult> {
+  private queryBuilder: QueryBuilder<any, TResult>
 
-  constructor(builder: QueryBuilder<TSearch, TMeta, TBody>) {
-    this.builder = builder;
+  constructor(queryBuilder: QueryBuilder<any, TResult>) {
+    this.queryBuilder = queryBuilder
   }
 
-  async exec(): Promise<QueryResult<TSearch, TMeta, TBody>> {
-    const results = await this.builder.exec();
+  /**
+   * Execute and return the first result, or undefined if none.
+   */
+  async exec(): Promise<TResult | undefined> {
+    const results = await this.queryBuilder.exec()
+    return results[0]
+  }
 
-    if (results.length === 0) {
-      throw new Error("No results found");
+  /**
+   * Execute and return the first result, throwing if none.
+   *
+   * @throws Error if no results found
+   */
+  async execOrThrow(): Promise<TResult> {
+    const result = await this.exec()
+    if (result === undefined) {
+      throw new Error("Query returned no results")
     }
-    if (results.length > 1) {
-      throw new Error(`Expected single result, got ${results.length}`);
-    }
-
-    return results[0];
+    return result
   }
 }
 
+// =============================================================================
+// Factory Function
+// =============================================================================
+
 /**
- * Create a query builder from a collection name
+ * Create a query builder from a registered resolver.
+ *
+ * @param name - The registered resolver name
+ * @returns A new QueryBuilder instance
  */
-export function from<TSearch = unknown, TMeta = unknown, TBody = unknown>(
-  collectionName: string
-): QueryBuilder<TSearch, TMeta, TBody> {
-  const collection = getCollection(collectionName) as CollectionDefinition<
-    TSearch,
-    TMeta,
-    TBody
-  >;
-  return new QueryBuilder(collection);
+export function from<TName extends keyof Registry>(
+  name: TName
+): QueryBuilder<Registry[TName]> {
+  const resolver = getResolver(name)
+  return new QueryBuilder(resolver as Registry[TName])
 }
 
 /**
- * Main piq API object
+ * Create a query builder from a resolver instance directly.
+ *
+ * @param resolver - The resolver instance
+ * @returns A new QueryBuilder instance
  */
-export const piq = {
-  from,
-};
+export function fromResolver<
+  TResolver extends Resolver<StandardSchema, StandardSchema, StandardSchema>
+>(resolver: TResolver): QueryBuilder<TResolver> {
+  return new QueryBuilder(resolver)
+}
