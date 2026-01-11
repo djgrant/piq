@@ -1,104 +1,66 @@
 import { join } from "path";
 import { z } from "zod";
-import {
-  defineCollection,
-  registerCollections,
-  piq,
-} from "piqit";
-import {
-  globResolver,
-  frontmatterResolver,
-  markdownResolver,
-} from "@piqit/resolvers";
+import { fromResolver, register, piq } from "piqit";
+import { fileMarkdown } from "@piqit/resolvers";
 
 const contentDir = join(import.meta.dir, "../public/content");
 
 // Define collections with Zod schemas
-const posts = defineCollection({
-  searchSchema: z.object({ year: z.string(), slug: z.string() }),
-  searchResolver: globResolver({
-    base: join(contentDir, "posts"),
-    path: "{year}/{slug}.md",
+const posts = fileMarkdown({
+  base: join(contentDir, "posts"),
+  path: "{year}/{slug}.md",
+  frontmatter: z.object({
+    title: z.string(),
+    tags: z.array(z.string()),
+    author: z.string(),
   }),
-  metaSchema: z.object({ title: z.string(), tags: z.array(z.string()), author: z.string() }),
-  metaResolver: frontmatterResolver(),
-  bodySchema: z.object({ 
-    raw: z.string(), 
-    html: z.string(), 
-    headings: z.array(z.object({ depth: z.number(), text: z.string(), slug: z.string() }))
-  }),
-  bodyResolver: markdownResolver(),
+  body: { html: true, headings: true, raw: true },
 });
 
-const workPackages = defineCollection({
-  searchSchema: z.object({ status: z.string(), priority: z.string(), name: z.string() }),
-  searchResolver: globResolver({
-    base: join(contentDir, "work"),
-    path: "{status}/wp-{priority}-{name}.md",
+const workPackages = fileMarkdown({
+  base: join(contentDir, "work"),
+  path: "{status}/wp-{priority}-{name}.md",
+  frontmatter: z.object({
+    category: z.string(),
+    size: z.string(),
   }),
-  metaSchema: z.object({ category: z.string(), size: z.string() }),
-  metaResolver: frontmatterResolver(),
-  bodySchema: z.object({ 
-    raw: z.string(), 
-    html: z.string(), 
-    headings: z.array(z.object({ depth: z.number(), text: z.string(), slug: z.string() }))
-  }),
-  bodyResolver: markdownResolver(),
+  body: { html: true, headings: true, raw: true },
 });
 
-registerCollections({ posts, workPackages });
+register("posts", posts);
+register("workPackages", workPackages);
 
 // Collections config for display in the explorer
 const collectionsConfig = `// Collections Configuration
 // Registered piq collections with Zod schemas
 
 import { z } from "zod";
-import { defineCollection } from "piqit";
-import { globResolver, frontmatterResolver, markdownResolver } from "@piqit/resolvers";
+import { register } from "piqit";
+import { fileMarkdown } from "@piqit/resolvers";
 
-export const posts = defineCollection({
-  searchSchema: z.object({ year: z.string(), slug: z.string() }),
-  searchResolver: globResolver({
-    base: "content/posts",
-    path: "{year}/{slug}.md",
+export const posts = fileMarkdown({
+  base: "content/posts",
+  path: "{year}/{slug}.md",
+  frontmatter: z.object({
+    title: z.string(),
+    tags: z.array(z.string()),
+    author: z.string(),
   }),
-  metaSchema: z.object({ 
-    title: z.string(), 
-    tags: z.array(z.string()), 
-    author: z.string() 
-  }),
-  metaResolver: frontmatterResolver(),
-  bodySchema: z.object({ 
-    raw: z.string(), 
-    html: z.string(), 
-    headings: z.array(z.object({ 
-      depth: z.number(), 
-      text: z.string(), 
-      slug: z.string() 
-    }))
-  }),
-  bodyResolver: markdownResolver(),
+  body: { html: true, headings: true, raw: true },
 });
 
-export const workPackages = defineCollection({
-  searchSchema: z.object({ status: z.string(), priority: z.string(), name: z.string() }),
-  searchResolver: globResolver({
-    base: "content/work",
-    path: "{status}/wp-{priority}-{name}.md",
+export const workPackages = fileMarkdown({
+  base: "content/work",
+  path: "{status}/wp-{priority}-{name}.md",
+  frontmatter: z.object({
+    category: z.string(),
+    size: z.string(),
   }),
-  metaSchema: z.object({ category: z.string(), size: z.string() }),
-  metaResolver: frontmatterResolver(),
-  bodySchema: z.object({ 
-    raw: z.string(), 
-    html: z.string(), 
-    headings: z.array(z.object({ 
-      depth: z.number(), 
-      text: z.string(), 
-      slug: z.string() 
-    }))
-  }),
-  bodyResolver: markdownResolver(),
+  body: { html: true, headings: true, raw: true },
 });
+
+register("posts", posts);
+register("workPackages", workPackages);
 `;
 
 // Temp directory for query modules
@@ -389,11 +351,8 @@ import { piq } from "piqit";
 
 export default async function() {
   const posts = await piq.from("posts")
-    .search("*")
-    .select({
-      search: ["year", "slug"],
-      meta: ["title", "tags"]
-    })
+    .scan({})
+    .select("params.year", "params.slug", "frontmatter.title", "frontmatter.tags")
     .exec();
 
   return posts;
@@ -413,46 +372,39 @@ export default async function() {
       // Add piq type declarations
       const piqTypes = \`
         declare module "piqit" {
-          /** Query result containing search, meta, and body data */
-          export interface QueryResult<TSearch = unknown, TMeta = unknown, TBody = unknown> {
-            path: string;
-            search: TSearch;
-            meta?: TMeta;
-            body?: TBody;
+          // Result is now FLAT - just the selected fields
+          export type QueryResult<TSelected> = TSelected;
+
+          export interface QueryBuilder<TParams, TFrontmatter, TBody> {
+            scan(constraints: Partial<TParams>): this;
+            filter(constraints: Partial<TFrontmatter>): this;
+            select<K extends string>(...paths: K[]): SelectBuilder<TParams, TFrontmatter, TBody>;
+            single(): SingleQueryBuilder<TParams, TFrontmatter, TBody>;
           }
 
-          /** Query builder for collections */
-          export interface QueryBuilder<TSearch, TMeta, TBody> {
-            search(constraints: Partial<TSearch> | "*"): this;
-            filter(constraints: Partial<TMeta>): this;
-            select<
-              SKeys extends keyof TSearch = never,
-              MKeys extends keyof TMeta = never,
-              BKeys extends keyof TBody = never
-            >(spec: {
-              search?: SKeys[];
-              meta?: MKeys[];
-              body?: BKeys[];
-            }): QueryBuilder<
-              SKeys extends never ? TSearch : Pick<TSearch, SKeys>,
-              MKeys extends never ? TMeta : Pick<TMeta, MKeys>,
-              BKeys extends never ? TBody : Pick<TBody, BKeys>
-            >;
-            single(): { exec(): Promise<QueryResult<TSearch, TMeta, TBody>> };
-            exec(): Promise<QueryResult<TSearch, TMeta, TBody>[]>;
+          export interface SelectBuilder<TParams, TFrontmatter, TBody> {
+            exec(): Promise<Array<Record<string, unknown>>>;
+            single(): { exec(): Promise<Record<string, unknown> | undefined>; execOrThrow(): Promise<Record<string, unknown>>; };
+            stream(): AsyncIterable<Record<string, unknown>>;
           }
 
-          interface PostsSearch { year: string; slug: string; }
-          interface PostsMeta { title: string; tags: string[]; author: string; }
+          export interface SingleQueryBuilder<TParams, TFrontmatter, TBody> {
+            select<K extends string>(...paths: K[]): { exec(): Promise<Record<string, unknown> | undefined>; execOrThrow(): Promise<Record<string, unknown>>; };
+          }
+
+          // Posts collection
+          interface PostsParams { year: string; slug: string; }
+          interface PostsFrontmatter { title: string; tags: string[]; author: string; }
           interface PostsBody { raw: string; html: string; headings: { depth: number; text: string; slug: string; }[]; }
 
-          interface WorkPackagesSearch { status: string; priority: string; name: string; }
-          interface WorkPackagesMeta { category: string; size: string; }
+          // Work packages collection
+          interface WorkPackagesParams { status: string; priority: string; name: string; }
+          interface WorkPackagesFrontmatter { category: string; size: string; }
           interface WorkPackagesBody { raw: string; html: string; headings: { depth: number; text: string; slug: string; }[]; }
 
           interface CollectionMap {
-            posts: { search: PostsSearch; meta: PostsMeta; body: PostsBody };
-            workPackages: { search: WorkPackagesSearch; meta: WorkPackagesMeta; body: WorkPackagesBody };
+            posts: { params: PostsParams; frontmatter: PostsFrontmatter; body: PostsBody };
+            workPackages: { params: WorkPackagesParams; frontmatter: WorkPackagesFrontmatter; body: WorkPackagesBody };
           }
 
           type CollectionName = keyof CollectionMap;
@@ -460,10 +412,13 @@ export default async function() {
           interface Piq {
             from<K extends CollectionName>(
               name: K
-            ): QueryBuilder<CollectionMap[K]["search"], CollectionMap[K]["meta"], CollectionMap[K]["body"]>;
+            ): QueryBuilder<CollectionMap[K]["params"], CollectionMap[K]["frontmatter"], CollectionMap[K]["body"]>;
           }
 
           export const piq: Piq;
+          export function fromResolver<TParams, TFrontmatter, TBody>(
+            resolver: unknown
+          ): QueryBuilder<TParams, TFrontmatter, TBody>;
         }
       \`;
 
