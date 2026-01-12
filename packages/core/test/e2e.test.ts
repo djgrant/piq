@@ -4,8 +4,8 @@
  * These tests verify the full piq API works correctly with real resolvers.
  */
 
-import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { piq, register, clearRegistry, fromResolver } from "../src"
+import { describe, test, expect } from "bun:test"
+import { piq, from } from "../src"
 import { fileMarkdown } from "@piqit/resolvers"
 import type { StandardSchema } from "../src/types"
 import path from "node:path"
@@ -42,34 +42,30 @@ const postFrontmatterSchema: StandardSchema<PostFrontmatter> = {
       if (obj.status !== "draft" && obj.status !== "published") {
         return { issues: [{ message: "status must be draft or published" }] }
       }
-      return { value: obj as PostFrontmatter }
+      return { value: obj as unknown as PostFrontmatter }
     },
   },
 }
 
 // =============================================================================
-// piq e2e Tests with Registry
+// Create resolver for tests
 // =============================================================================
 
-describe("piq e2e", () => {
-  beforeAll(() => {
-    // Register a posts resolver pointing to fixtures
-    register(
-      "posts",
-      fileMarkdown({
-        base: FIXTURES_PATH,
-        path: "{year}/{slug}.md",
-        frontmatter: postFrontmatterSchema,
-        body: { html: true, headings: true },
-      })
-    )
-  })
+const postsResolver = fileMarkdown({
+  base: FIXTURES_PATH,
+  path: "{year}/{slug}.md",
+  frontmatter: postFrontmatterSchema,
+  body: { html: true, headings: true },
+})
 
-  afterAll(() => clearRegistry())
+// =============================================================================
+// piq.from e2e Tests
+// =============================================================================
 
+describe("piq.from e2e", () => {
   test("basic query with select", async () => {
     const results = await piq
-      .from("posts")
+      .from(postsResolver)
       .scan({ year: "2024" })
       .select("params.slug", "frontmatter.title")
       .exec()
@@ -84,7 +80,7 @@ describe("piq e2e", () => {
 
   test("filter narrows results", async () => {
     const results = await piq
-      .from("posts")
+      .from(postsResolver)
       .scan({}) // scan all
       .filter({ status: "published" })
       .select("params.slug")
@@ -98,7 +94,7 @@ describe("piq e2e", () => {
 
   test("wildcard selects all from namespace", async () => {
     const results = await piq
-      .from("posts")
+      .from(postsResolver)
       .scan({ year: "2024", slug: "hello-world" })
       .select("params.*")
       .exec()
@@ -109,7 +105,7 @@ describe("piq e2e", () => {
 
   test("object form aliases fields", async () => {
     const results = await piq
-      .from("posts")
+      .from(postsResolver)
       .scan({ year: "2024", slug: "hello-world" })
       .select({ postSlug: "params.slug", postTitle: "frontmatter.title" })
       .exec()
@@ -121,7 +117,7 @@ describe("piq e2e", () => {
 
   test("single() returns one result", async () => {
     const result = await piq
-      .from("posts")
+      .from(postsResolver)
       .scan({ year: "2024", slug: "hello-world" })
       .select("params.slug", "frontmatter.title")
       .single()
@@ -133,7 +129,7 @@ describe("piq e2e", () => {
 
   test("single() returns undefined for no results", async () => {
     const result = await piq
-      .from("posts")
+      .from(postsResolver)
       .scan({ year: "9999", slug: "nonexistent" })
       .select("params.slug")
       .single()
@@ -146,7 +142,7 @@ describe("piq e2e", () => {
     const results: unknown[] = []
 
     for await (const post of piq
-      .from("posts")
+      .from(postsResolver)
       .scan({ year: "2024" })
       .select("params.slug")
       .stream()) {
@@ -159,7 +155,7 @@ describe("piq e2e", () => {
 
   test("body selection works", async () => {
     const results = await piq
-      .from("posts")
+      .from(postsResolver)
       .scan({ year: "2024", slug: "hello-world" })
       .select("body.html", "body.headings")
       .exec()
@@ -173,7 +169,7 @@ describe("piq e2e", () => {
 
   test("combining scan + filter + select works end-to-end", async () => {
     const results = await piq
-      .from("posts")
+      .from(postsResolver)
       .scan({ year: "2024" })
       .filter({ status: "published" })
       .select("params.slug", "frontmatter.title", "frontmatter.tags")
@@ -188,7 +184,7 @@ describe("piq e2e", () => {
   test("execOrThrow throws on no results", async () => {
     await expect(
       piq
-        .from("posts")
+        .from(postsResolver)
         .scan({ year: "9999" })
         .select("params.slug")
         .single()
@@ -198,10 +194,10 @@ describe("piq e2e", () => {
 })
 
 // =============================================================================
-// Direct Resolver Tests (using fromResolver)
+// Direct from() Tests
 // =============================================================================
 
-describe("piq fromResolver e2e", () => {
+describe("from() e2e", () => {
   const resolver = fileMarkdown({
     base: FIXTURES_PATH,
     path: "{year}/{slug}.md",
@@ -209,8 +205,8 @@ describe("piq fromResolver e2e", () => {
     body: { html: true, headings: true, raw: true },
   })
 
-  test("fromResolver creates working query builder", async () => {
-    const results = await fromResolver(resolver)
+  test("from() creates working query builder", async () => {
+    const results = await from(resolver)
       .scan({ year: "2024" })
       .select("params.slug", "frontmatter.title")
       .exec()
@@ -221,7 +217,7 @@ describe("piq fromResolver e2e", () => {
   })
 
   test("select with multiple field types", async () => {
-    const results = await fromResolver(resolver)
+    const results = await from(resolver)
       .scan({ year: "2024", slug: "hello-world" })
       .select("params.slug", "frontmatter.title", "body.html")
       .exec()
@@ -234,7 +230,7 @@ describe("piq fromResolver e2e", () => {
 
   test("filter by multiple frontmatter fields", async () => {
     // Filter by both status and year via scan
-    const results = await fromResolver(resolver)
+    const results = await from(resolver)
       .scan({ year: "2024" })
       .filter({ status: "published" })
       .select("params.slug")
@@ -246,7 +242,7 @@ describe("piq fromResolver e2e", () => {
 
   test("wildcard with aliases", async () => {
     // Using object form with a wildcard-expanded namespace
-    const results = await fromResolver(resolver)
+    const results = await from(resolver)
       .scan({ year: "2023", slug: "old-post" })
       .select({ theSlug: "params.slug", theYear: "params.year" })
       .exec()
@@ -269,7 +265,7 @@ describe("piq e2e edge cases", () => {
   })
 
   test("empty scan returns all files", async () => {
-    const results = await fromResolver(resolver)
+    const results = await from(resolver)
       .scan({})
       .select("params.slug")
       .exec()
@@ -279,7 +275,7 @@ describe("piq e2e edge cases", () => {
   })
 
   test("filter with no matches returns empty array", async () => {
-    const results = await fromResolver(resolver)
+    const results = await from(resolver)
       .filter({ status: "published" })
       .filter({ status: "draft" } as any) // Contradicting filter
       .select("params.slug")
@@ -291,7 +287,7 @@ describe("piq e2e edge cases", () => {
   })
 
   test("select works with body.headings array", async () => {
-    const results = await fromResolver(resolver)
+    const results = await from(resolver)
       .scan({ year: "2024", slug: "hello-world" })
       .select("body.headings")
       .exec()
@@ -304,7 +300,7 @@ describe("piq e2e edge cases", () => {
   })
 
   test("multiple wildcards in same query", async () => {
-    const results = await fromResolver(resolver)
+    const results = await from(resolver)
       .scan({ year: "2024", slug: "hello-world" })
       .select("params.*", "frontmatter.*")
       .exec()
@@ -321,7 +317,7 @@ describe("piq e2e edge cases", () => {
   })
 
   test("single item with all fields via wildcard", async () => {
-    const result = await fromResolver(resolver)
+    const result = await from(resolver)
       .scan({ year: "2024", slug: "hello-world" })
       .select("params.*", "frontmatter.*", "body.*")
       .single()

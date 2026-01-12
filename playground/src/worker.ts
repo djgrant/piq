@@ -12,7 +12,7 @@
 
 import { posts, workPackages, type Post, type WorkPackage } from "./generated/content";
 import { staticContent } from "@piqit/resolvers/edge";
-import { fromResolver } from "piqit";
+import { from } from "piqit";
 
 // =============================================================================
 // Create Static Resolvers
@@ -22,9 +22,9 @@ import { fromResolver } from "piqit";
 const postsResolver = staticContent<Post>(posts);
 const workPackagesResolver = staticContent<WorkPackage>(workPackages);
 
-// Create query builders (no need to register - use fromResolver directly)
-const postsQuery = () => fromResolver(postsResolver);
-const workPackagesQuery = () => fromResolver(workPackagesResolver);
+// Create query builders (pass resolver directly to from())
+const postsQuery = () => from(postsResolver);
+const workPackagesQuery = () => from(workPackagesResolver);
 
 // =============================================================================
 // Worker Handler

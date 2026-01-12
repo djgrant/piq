@@ -14,7 +14,6 @@ import type {
   Undot,
   UndotWithAliases,
 } from "./types"
-import { getResolver, type Registry } from "./registry"
 import { undot, undotWithAliases } from "./undot"
 
 // =============================================================================
@@ -262,25 +261,18 @@ export class SingleQueryBuilder<TResult> {
 // =============================================================================
 
 /**
- * Create a query builder from a registered resolver.
- *
- * @param name - The registered resolver name
- * @returns A new QueryBuilder instance
- */
-export function from<TName extends keyof Registry>(
-  name: TName
-): QueryBuilder<Registry[TName]> {
-  const resolver = getResolver(name)
-  return new QueryBuilder(resolver as Registry[TName])
-}
-
-/**
- * Create a query builder from a resolver instance directly.
+ * Create a query builder from a resolver instance.
  *
  * @param resolver - The resolver instance
  * @returns A new QueryBuilder instance
+ *
+ * @example
+ * const results = await from(postsResolver)
+ *   .scan({})
+ *   .select('params.slug', 'frontmatter.title')
+ *   .exec()
  */
-export function fromResolver<
+export function from<
   TResolver extends Resolver<StandardSchema, StandardSchema, StandardSchema>
 >(resolver: TResolver): QueryBuilder<TResolver> {
   return new QueryBuilder(resolver)

@@ -1,41 +1,13 @@
 import { join } from "path";
-import { z } from "zod";
-import { fromResolver, register, piq } from "piqit";
-import { fileMarkdown } from "@piqit/resolvers";
 
 const contentDir = join(import.meta.dir, "../public/content");
 
-// Define collections with Zod schemas
-const posts = fileMarkdown({
-  base: join(contentDir, "posts"),
-  path: "{year}/{slug}.md",
-  frontmatter: z.object({
-    title: z.string(),
-    tags: z.array(z.string()),
-    author: z.string(),
-  }),
-  body: { html: true, headings: true, raw: true },
-});
-
-const workPackages = fileMarkdown({
-  base: join(contentDir, "work"),
-  path: "{status}/wp-{priority}-{name}.md",
-  frontmatter: z.object({
-    category: z.string(),
-    size: z.string(),
-  }),
-  body: { html: true, headings: true, raw: true },
-});
-
-register("posts", posts);
-register("workPackages", workPackages);
-
 // Collections config for display in the explorer
 const collectionsConfig = `// Collections Configuration
-// Registered piq collections with Zod schemas
+// piq resolvers with Zod schemas
 
 import { z } from "zod";
-import { register } from "piqit";
+import { piq } from "piqit";
 import { fileMarkdown } from "@piqit/resolvers";
 
 export const posts = fileMarkdown({
@@ -59,8 +31,7 @@ export const workPackages = fileMarkdown({
   body: { html: true, headings: true, raw: true },
 });
 
-register("posts", posts);
-register("workPackages", workPackages);
+// Usage: piq.from(posts).scan({}).select(...).exec()
 `;
 
 // Temp directory for query modules
@@ -348,14 +319,15 @@ const HTML = `<!DOCTYPE html>
 
     const defaultCode = \`// Query module - imports resolve via Bun
 import { piq } from "piqit";
+import { posts } from "./resolvers";
 
 export default async function() {
-  const posts = await piq.from("posts")
+  const results = await piq.from(posts)
     .scan({})
     .select("params.year", "params.slug", "frontmatter.title", "frontmatter.tags")
     .exec();
 
-  return posts;
+  return results;
 }\`;
 
     require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });

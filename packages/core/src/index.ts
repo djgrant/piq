@@ -34,17 +34,10 @@ export type {
 } from "./types"
 
 // =============================================================================
-// Registry
-// =============================================================================
-
-export { register, getResolver, clearRegistry, hasResolver } from "./registry"
-export type { Registry } from "./registry"
-
-// =============================================================================
 // Query Builder
 // =============================================================================
 
-export { QueryBuilder, SingleQueryBuilder, from, fromResolver } from "./query"
+export { QueryBuilder, SingleQueryBuilder, from } from "./query"
 
 // =============================================================================
 // Undotting Utilities
@@ -63,7 +56,6 @@ export {
 // =============================================================================
 
 import { from } from "./query"
-import { register, getResolver, clearRegistry, hasResolver } from "./registry"
 
 /**
  * The main piq API object.
@@ -71,7 +63,7 @@ import { register, getResolver, clearRegistry, hasResolver } from "./registry"
  * @example
  * // Create a query
  * const posts = await piq
- *   .from('posts')
+ *   .from(postsResolver)
  *   .scan({ pattern: 'content/*.md' })
  *   .filter({ draft: false })
  *   .select('params.slug', 'frontmatter.title')
@@ -79,39 +71,10 @@ import { register, getResolver, clearRegistry, hasResolver } from "./registry"
  */
 export const piq = {
   /**
-   * Start a query from a registered resolver.
+   * Start a query from a resolver.
    *
-   * @param name - The registered resolver name
+   * @param resolver - The resolver instance
    * @returns A new QueryBuilder instance
    */
   from,
-
-  /**
-   * Register a resolver.
-   *
-   * @param name - Unique name for the resolver
-   * @param resolver - The resolver instance
-   */
-  register,
-
-  /**
-   * Get a registered resolver by name.
-   *
-   * @param name - The resolver name
-   * @returns The resolver instance
-   */
-  getResolver,
-
-  /**
-   * Clear all registered resolvers (for testing).
-   */
-  clearRegistry,
-
-  /**
-   * Check if a resolver is registered.
-   *
-   * @param name - The resolver name
-   * @returns True if registered
-   */
-  hasResolver,
 }

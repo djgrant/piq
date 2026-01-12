@@ -6,11 +6,7 @@ import { describe, test, expect, beforeEach } from "bun:test"
 import {
   piq,
   QueryBuilder,
-  fromResolver,
-  register,
-  getResolver,
-  clearRegistry,
-  hasResolver,
+  from,
   undot,
   undotWithAliases,
   expandWildcards,
@@ -100,47 +96,7 @@ function createMockResolver(): Resolver<
   }
 }
 
-// =============================================================================
-// Registry Tests
-// =============================================================================
 
-describe("Registry", () => {
-  beforeEach(() => {
-    clearRegistry()
-  })
-
-  test("register and get resolver", () => {
-    const resolver = createMockResolver()
-    register("posts", resolver)
-
-    expect(hasResolver("posts")).toBe(true)
-    expect(getResolver("posts")).toBe(resolver)
-  })
-
-  test("throws on duplicate registration", () => {
-    const resolver = createMockResolver()
-    register("posts", resolver)
-
-    expect(() => register("posts", resolver)).toThrow('Resolver "posts" is already registered')
-  })
-
-  test("throws on missing resolver", () => {
-    expect(() => getResolver("nonexistent")).toThrow('Resolver "nonexistent" not found')
-  })
-
-  test("clearRegistry removes all resolvers", () => {
-    register("posts", createMockResolver())
-    register("pages", createMockResolver())
-
-    expect(hasResolver("posts")).toBe(true)
-    expect(hasResolver("pages")).toBe(true)
-
-    clearRegistry()
-
-    expect(hasResolver("posts")).toBe(false)
-    expect(hasResolver("pages")).toBe(false)
-  })
-})
 
 // =============================================================================
 // Undot Tests
@@ -267,17 +223,16 @@ describe("QueryBuilder", () => {
   let resolver: ReturnType<typeof createMockResolver>
 
   beforeEach(() => {
-    clearRegistry()
     resolver = createMockResolver()
   })
 
   test("creates query from resolver", () => {
-    const query = fromResolver(resolver)
+    const query = from(resolver)
     expect(query).toBeInstanceOf(QueryBuilder)
   })
 
   test("exec returns undotted results", async () => {
-    const query = fromResolver(resolver)
+    const query = from(resolver)
     const results = await query.select("params.slug", "frontmatter.title").exec()
 
     expect(results).toHaveLength(3)
@@ -287,7 +242,7 @@ describe("QueryBuilder", () => {
   })
 
   test("filter constrains results", async () => {
-    const query = fromResolver(resolver)
+    const query = from(resolver)
     const results = await query
       .filter({ draft: false })
       .select("params.slug")
@@ -298,7 +253,7 @@ describe("QueryBuilder", () => {
   })
 
   test("select with aliases", async () => {
-    const query = fromResolver(resolver)
+    const query = from(resolver)
     const results = await query
       .select({
         postSlug: "params.slug",
@@ -314,7 +269,7 @@ describe("QueryBuilder", () => {
   })
 
   test("single returns first result", async () => {
-    const query = fromResolver(resolver)
+    const query = from(resolver)
     const result = await query.select("params.slug").single().exec()
 
     expect(result).toEqual({ slug: "hello-world" })
@@ -337,7 +292,7 @@ describe("QueryBuilder", () => {
       },
     }
 
-    const result = await fromResolver(emptyResolver)
+    const result = await from(emptyResolver)
       .select("params.slug")
       .single()
       .exec()
@@ -362,12 +317,12 @@ describe("QueryBuilder", () => {
     }
 
     await expect(
-      fromResolver(emptyResolver).select("params.slug").single().execOrThrow()
+      from(emptyResolver).select("params.slug").single().execOrThrow()
     ).rejects.toThrow("Query returned no results")
   })
 
   test("stream yields results one at a time", async () => {
-    const query = fromResolver(resolver)
+    const query = from(resolver)
     const stream = query.filter({ draft: false }).select("params.slug").stream()
 
     const results: { slug: string }[] = []
@@ -381,7 +336,7 @@ describe("QueryBuilder", () => {
   })
 
   test("select creates new builder for immutability", async () => {
-    const base = fromResolver(resolver)
+    const base = from(resolver)
     const withFilter = base.filter({ draft: false })
     const withSelect = withFilter.select("params.slug")
 
@@ -399,33 +354,14 @@ describe("QueryBuilder", () => {
 // =============================================================================
 
 describe("piq API", () => {
-  beforeEach(() => {
-    clearRegistry()
-  })
-
-  test("piq.register and piq.from work together", async () => {
+  test("piq.from accepts resolver directly", async () => {
     const resolver = createMockResolver()
-    piq.register("posts", resolver)
 
-    expect(piq.hasResolver("posts")).toBe(true)
-
-    // Note: In real usage, you'd use declaration merging for type safety
-    // Here we're testing the runtime behavior
-    const results = await (piq.from as any)("posts")
+    const results = await piq.from(resolver)
       .select("params.slug")
       .exec()
 
     expect(results).toHaveLength(3)
-  })
-
-  test("piq.clearRegistry clears all", () => {
-    piq.register("a", createMockResolver())
-    piq.register("b", createMockResolver())
-
-    piq.clearRegistry()
-
-    expect(piq.hasResolver("a")).toBe(false)
-    expect(piq.hasResolver("b")).toBe(false)
   })
 })
 
@@ -436,7 +372,7 @@ describe("piq API", () => {
 describe("Error handling", () => {
   test("throws when no select specified", async () => {
     const resolver = createMockResolver()
-    const query = fromResolver(resolver)
+    const query = from(resolver)
 
     await expect(query.exec()).rejects.toThrow("No select specified")
   })
