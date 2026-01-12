@@ -1,0 +1,127 @@
+---
+export const prerender = true;
+
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+const codeFileMarkdown = `<span class="syn-keyword">import</span> { fileMarkdown } <span class="syn-keyword">from</span> <span class="syn-string">'@piqit/resolvers'</span>
+<span class="syn-keyword">import</span> { z } <span class="syn-keyword">from</span> <span class="syn-string">'zod'</span>
+
+<span class="syn-keyword">const</span> posts = fileMarkdown({
+  <span class="syn-comment">// Base directory for finding files</span>
+  base: <span class="syn-string">'content/posts'</span>,
+  
+  <span class="syn-comment">// Path pattern with {param} placeholders</span>
+  path: <span class="syn-string">'{year}/{slug}.md'</span>,
+  
+  <span class="syn-comment">// Schema for frontmatter (any StandardSchema-compatible library)</span>
+  frontmatter: z.object({
+    title: z.string(),
+    status: z.enum([<span class="syn-string">'draft'</span>, <span class="syn-string">'published'</span>]),
+    tags: z.array(z.string()).default([]),
+  }),
+  
+  <span class="syn-comment">// Body parsing options</span>
+  body: {
+    raw: <span class="syn-keyword">true</span>,      <span class="syn-comment">// Include raw markdown</span>
+    html: <span class="syn-keyword">true</span>,     <span class="syn-comment">// Include HTML conversion</span>
+    headings: <span class="syn-keyword">true</span>  <span class="syn-comment">// Extract headings with slugs</span>
+  }
+})`;
+
+const codePathPatterns = `<span class="syn-string">'{year}/{slug}.md'</span>            <span class="syn-comment">// Matches: 2024/hello-world.md</span>
+<span class="syn-string">'{category}/{year}/{slug}.md'</span> <span class="syn-comment">// Matches: tech/2024/my-post.md</span>`;
+
+const codeBodyOptions = `body: {
+  raw: <span class="syn-keyword">true</span>,      <span class="syn-comment">// string - original markdown</span>
+  html: <span class="syn-keyword">true</span>,     <span class="syn-comment">// string - converted to HTML</span>
+  headings: <span class="syn-keyword">true</span>  <span class="syn-comment">// Heading[] - extracted heading structure</span>
+}`;
+
+const codeHeadingType = `<span class="syn-keyword">interface</span> <span class="syn-type">Heading</span> {
+  depth: <span class="syn-type">number</span>   <span class="syn-comment">// 1-6</span>
+  text: <span class="syn-type">string</span>    <span class="syn-comment">// Heading text</span>
+  slug: <span class="syn-type">string</span>    <span class="syn-comment">// URL-safe slug</span>
+}`;
+
+const codeCustomResolver = `<span class="syn-keyword">import</span> <span class="syn-keyword">type</span> { <span class="syn-type">Resolver</span>, <span class="syn-type">QuerySpec</span> } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
+
+<span class="syn-keyword">const</span> myResolver: <span class="syn-type">Resolver</span>&lt;<span class="syn-type">ScanSchema</span>, <span class="syn-type">FilterSchema</span>, <span class="syn-type">ResultSchema</span>&gt; = {
+  scan: scanSchema,
+  filter: filterSchema,
+  result: resultSchema,
+  
+  <span class="syn-keyword">async</span> resolve(spec: <span class="syn-type">QuerySpec</span>) {
+    <span class="syn-comment">// Implement query logic</span>
+    <span class="syn-comment">// spec.scan - scan constraints</span>
+    <span class="syn-comment">// spec.filter - filter constraints</span>
+    <span class="syn-comment">// spec.select - fields to return</span>
+    <span class="syn-keyword">return</span> results
+  }
+}`;
+---
+
+<DocsLayout title="Resolvers">
+  <h1>Resolvers</h1>
+  
+  <p>
+    Resolvers define how piq reads and parses content. The core package provides the query 
+    builder; resolver packages provide the data sources.
+  </p>
+
+  <h2>@piqit/resolvers</h2>
+
+  <pre><code>npm install @piqit/resolvers</code></pre>
+
+  <h3>fileMarkdown</h3>
+
+  <p>The primary resolver for markdown content with YAML frontmatter.</p>
+
+  <pre><code set:html={codeFileMarkdown} /></pre>
+
+  <h3>Path Patterns</h3>
+
+  <p>Path patterns use <code>{`{param}`}</code> syntax to define URL-style segments:</p>
+
+  <pre><code set:html={codePathPatterns} /></pre>
+
+  <p>Parameters extracted from the path are available as <code>params.*</code> in select.</p>
+
+  <h3>StandardSchema</h3>
+
+  <p>
+    Frontmatter schemas use <a href="https://github.com/standard-schema/standard-schema">StandardSchema</a>, 
+    compatible with:
+  </p>
+
+  <ul>
+    <li>Zod</li>
+    <li>Valibot</li>
+    <li>ArkType</li>
+    <li>Any library implementing the standard</li>
+  </ul>
+
+  <h3>Body Options</h3>
+
+  <p>Control what gets parsed from the markdown body:</p>
+
+  <pre><code set:html={codeBodyOptions} /></pre>
+
+  <p>The <code>Heading</code> type:</p>
+
+  <pre><code set:html={codeHeadingType} /></pre>
+
+  <h2>Writing Custom Resolvers</h2>
+
+  <p>
+    Resolvers implement the <code>Resolver</code> interface. A resolver must define schemas 
+    for scan parameters, filter parameters, and the result shape, plus a <code>resolve()</code> 
+    method that executes queries.
+  </p>
+
+  <pre><code set:html={codeCustomResolver} /></pre>
+
+  <p>
+    See the <a href="https://github.com/djgrant/piq">source code</a> for 
+    <code>fileMarkdown</code> as a reference implementation.
+  </p>
+</DocsLayout>

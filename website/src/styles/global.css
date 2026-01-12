@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* Design tokens - matching mdz style with piq's green accent */
+@theme {
+  /* Colors - Minimal palette */
+  --color-bg: #FAFAFA;
+  --color-bg-dark: #0A0A0A;
+  --color-text: #171717;
+  --color-text-dark: #EDEDED;
+  --color-muted: #737373;
+  --color-muted-dark: #A3A3A3;
+  --color-accent: #10B981;
+  --color-accent-light: #34D399;
+  --color-border: #E5E5E5;
+  --color-border-dark: #262626;
+  
+  /* Syntax highlighting colors */
+  --color-keyword: #10B981;
+  --color-type: #06B6D4;
+  --color-string: #F59E0B;
+  --color-comment: #6A737D;
+  --color-property: #E5E5E5;
+  
+  /* Typography */
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
+  
+  /* Spacing - generous */
+  --spacing-page: 1.5rem;
+  --spacing-section: 6rem;
+  --max-width-prose: 65ch;
+  --max-width-content: 72rem;
+}
+
+/* Base styles */
+html {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  scroll-behavior: smooth;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  html {
+    color: var(--color-text-dark);
+    background-color: var(--color-bg-dark);
+  }
+}
+
+/* Typography scale */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; }
+h2 { font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.2; }
+h3 { font-size: 1.5rem; line-height: 1.3; }
+h4 { font-size: 1.25rem; line-height: 1.4; }
+
+/* Code styling */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+pre {
+  font-family: var(--font-mono);
+  background-color: #1E1E1E;
+  color: #D4D4D4;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* Syntax highlighting */
+.syn-keyword { color: var(--color-keyword) !important; font-weight: 600 !important; }
+.syn-type { color: var(--color-type) !important; }
+.syn-string { color: var(--color-string) !important; }
+.syn-comment { color: var(--color-comment) !important; font-style: italic !important; }
+.syn-property { color: var(--color-property) !important; }
+
+/* Focus states */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background-color: var(--color-accent);
+  color: white;
+}
+
+/* Smooth dark mode transitions - exclude code blocks to prevent Firefox rendering issues */
+*:not(pre):not(code):not(pre *) {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}

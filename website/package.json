@@ -1,0 +1,22 @@
+{
+  "name": "piq-website",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Documentation and playground for piq",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "push": "pnpm build && npx wrangler pages deploy dist --project-name=piq-website"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^12.0.1",
+    "@tailwindcss/vite": "^4.1.18",
+    "astro": "^5.16.6",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260103.0",
+    "wrangler": "^4.21.1"
+  }
+}

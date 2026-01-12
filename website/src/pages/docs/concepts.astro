@@ -1,0 +1,128 @@
+---
+export const prerender = true;
+
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+const codePathDesign = `<span class="syn-comment">// Good: year in path, filterable without I/O</span>
+fileMarkdown({ path: <span class="syn-string">'{year}/{slug}.md'</span> })
+piq.from(<span class="syn-string">'posts'</span>).scan({ year: <span class="syn-string">'2024'</span> })  <span class="syn-comment">// Fast - just glob pattern</span>
+
+<span class="syn-comment">// Less efficient: year only in frontmatter</span>
+piq.from(<span class="syn-string">'posts'</span>).scan({}).filter({ year: <span class="syn-string">'2024'</span> })  <span class="syn-comment">// Must read every file</span>`;
+
+const codeFlatResults = `.select(<span class="syn-string">'params.slug'</span>, <span class="syn-string">'frontmatter.title'</span>, <span class="syn-string">'body.html'</span>)
+<span class="syn-comment">// Result: { slug: string; title: string; html: string }</span>`;
+
+const codeObjectForm = `.select({
+  postSlug: <span class="syn-string">'params.slug'</span>,
+  postTitle: <span class="syn-string">'frontmatter.title'</span>
+})
+<span class="syn-comment">// Result: { postSlug: string; postTitle: string }</span>`;
+
+const codeWaterfall = `<span class="syn-keyword">const</span> post = <span class="syn-keyword">await</span> getPost(slug)
+<span class="syn-keyword">const</span> author = <span class="syn-keyword">await</span> getAuthor(post.authorId)`;
+
+const codeN1Bad = `<span class="syn-comment">// Bad: N+1</span>
+<span class="syn-keyword">for</span> (<span class="syn-keyword">const</span> post <span class="syn-keyword">of</span> posts) {
+  <span class="syn-keyword">const</span> author = <span class="syn-keyword">await</span> getAuthor(post.authorId)
+}
+
+<span class="syn-comment">// Better: batch fetch authors</span>
+<span class="syn-keyword">const</span> authorIds = posts.map(p => p.authorId)
+<span class="syn-keyword">const</span> authors = <span class="syn-keyword">await</span> getAuthors(authorIds)`;
+
+const codeCollision = `<span class="syn-comment">// ERROR: 'title' appears in both paths</span>
+.select(<span class="syn-string">'params.title'</span>, <span class="syn-string">'frontmatter.title'</span>)
+
+<span class="syn-comment">// FIX: use object form to alias</span>
+.select({ paramTitle: <span class="syn-string">'params.title'</span>, fmTitle: <span class="syn-string">'frontmatter.title'</span> })`;
+---
+
+<DocsLayout title="Concepts">
+  <h1>Concepts</h1>
+  
+  <p>
+    piq's design is built around a few core ideas. Understanding these will help you 
+    get the most out of the library.
+  </p>
+
+  <h2>Cost-Awareness</h2>
+
+  <p>
+    The API makes resolution cost visible. The layers aren't implementation detail—they're 
+    the API contract.
+  </p>
+
+  <p>
+    When you call <code>.scan()</code>, you're doing path enumeration. It's cheap—no file 
+    contents are read. When you call <code>.filter()</code>, you're reading frontmatter from 
+    each file that passed the scan. When you <code>.select()</code> body fields, you're 
+    parsing markdown.
+  </p>
+
+  <p>
+    This is explicit by design. You know what you're paying for.
+  </p>
+
+  <h2>Design Patterns Upfront</h2>
+
+  <p>
+    Like DynamoDB, piq rewards designing your access patterns into your data structure. 
+    The query harvests structure created at write time.
+  </p>
+
+  <pre set:html={codePathDesign} />
+
+  <p>
+    Put high-cardinality, frequently-filtered fields in your path pattern where enumeration 
+    can extract them for free.
+  </p>
+
+  <h2>Flat Results</h2>
+
+  <p>
+    Select uses dotted paths, but results are flat. The final segment of each path becomes 
+    the property name:
+  </p>
+
+  <pre set:html={codeFlatResults} />
+
+  <p>
+    If you need custom names or have collisions, use the object form:
+  </p>
+
+  <pre set:html={codeObjectForm} />
+
+  <h2>Relationships</h2>
+
+  <p>
+    piq doesn't do joins. Relationships are your responsibility.
+  </p>
+
+  <p>
+    Fetching a post then its author is one waterfall—acceptable:
+  </p>
+
+  <pre set:html={codeWaterfall} />
+
+  <p>
+    Fetching 100 posts then 100 separate author queries is N+1—restructure or batch:
+  </p>
+
+  <pre set:html={codeN1Bad} />
+
+  <h2>Type Safety</h2>
+
+  <p>
+    Invalid queries are type errors, not runtime surprises. TypeScript catches:
+  </p>
+
+  <ul>
+    <li>Selecting fields that don't exist</li>
+    <li>Filtering on non-existent frontmatter properties</li>
+    <li>Scanning with invalid path parameters</li>
+    <li>Collision detection when two paths have the same final segment</li>
+  </ul>
+
+  <pre set:html={codeCollision} />
+</DocsLayout>

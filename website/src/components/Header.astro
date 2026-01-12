@@ -1,0 +1,187 @@
+---
+interface Props {
+  currentPath?: string;
+  fullWidth?: boolean;
+}
+
+const { currentPath = '', fullWidth = false } = Astro.props;
+
+const links = [
+  { href: '/docs', label: 'Docs' },
+  { href: '/playground', label: 'Playground' },
+];
+---
+
+<header class="fixed top-0 left-0 right-0 z-50 bg-[var(--color-bg)]/80 dark:bg-[var(--color-bg-dark)]/80 backdrop-blur-md border-b border-[var(--color-border)] dark:border-[var(--color-border-dark)]">
+  <nav class:list={[
+    'mx-auto px-[var(--spacing-page)] h-16 flex items-center justify-between',
+    fullWidth ? 'max-w-full' : 'max-w-[var(--max-width-content)]'
+  ]}>
+    <!-- Logo -->
+    <a href="/" class="flex items-center font-mono font-medium text-lg tracking-tight hover:text-[var(--color-accent)] transition-colors">
+      piq
+    </a>
+    
+    <!-- Desktop Navigation -->
+    <div class="hidden md:flex items-center gap-8">
+      {links.map(link => (
+        <a 
+          href={link.href}
+          class:list={[
+            'text-sm font-medium transition-colors',
+            currentPath.startsWith(link.href) 
+              ? 'text-[var(--color-accent)]' 
+              : 'text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] hover:text-[var(--color-text)] dark:hover:text-[var(--color-text-dark)]'
+          ]}
+        >
+          {link.label}
+        </a>
+      ))}
+      
+      <!-- GitHub -->
+      <a 
+        href="https://github.com/djgrant/piq" 
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] hover:text-[var(--color-text)] dark:hover:text-[var(--color-text-dark)] transition-colors"
+        aria-label="GitHub"
+      >
+        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+        </svg>
+      </a>
+    </div>
+
+    <!-- Mobile Hamburger Button -->
+    <button 
+      id="mobile-menu-button"
+      class="md:hidden flex items-center justify-center w-10 h-10 -mr-2 text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] hover:text-[var(--color-text)] dark:hover:text-[var(--color-text-dark)] transition-colors"
+      aria-label="Toggle menu"
+      aria-expanded="false"
+      aria-controls="mobile-menu"
+    >
+      <!-- Hamburger icon -->
+      <svg id="hamburger-icon" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </svg>
+      <!-- Close icon (hidden by default) -->
+      <svg id="close-icon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
+  </nav>
+
+  <!-- Mobile Menu Dropdown -->
+  <div 
+    id="mobile-menu"
+    class="md:hidden hidden opacity-0 transform -translate-y-2 transition-all duration-200 ease-out bg-[var(--color-bg)]/95 dark:bg-[var(--color-bg-dark)]/95 backdrop-blur-md border-b border-[var(--color-border)] dark:border-[var(--color-border-dark)]"
+  >
+    <div class:list={[
+      'mx-auto px-[var(--spacing-page)] py-4 flex flex-col',
+      fullWidth ? 'max-w-full' : 'max-w-[var(--max-width-content)]'
+    ]}>
+      {links.map(link => (
+        <a 
+          href={link.href}
+          class:list={[
+            'mobile-menu-link py-3 text-base font-medium transition-colors border-b border-[var(--color-border)]/50 dark:border-[var(--color-border-dark)]/50 last:border-b-0',
+            currentPath.startsWith(link.href) 
+              ? 'text-[var(--color-accent)]' 
+              : 'text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] hover:text-[var(--color-text)] dark:hover:text-[var(--color-text-dark)]'
+          ]}
+        >
+          {link.label}
+        </a>
+      ))}
+      
+      <!-- GitHub in mobile menu -->
+      <a 
+        href="https://github.com/djgrant/piq" 
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mobile-menu-link py-3 text-base font-medium text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] hover:text-[var(--color-text)] dark:hover:text-[var(--color-text-dark)] transition-colors flex items-center gap-2"
+      >
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+        </svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- Spacer for fixed header -->
+<div class="h-16"></div>
+
+<script>
+  const menuButton = document.getElementById('mobile-menu-button');
+  const mobileMenu = document.getElementById('mobile-menu');
+  const hamburgerIcon = document.getElementById('hamburger-icon');
+  const closeIcon = document.getElementById('close-icon');
+  const mobileMenuLinks = document.querySelectorAll('.mobile-menu-link');
+
+  let isOpen = false;
+
+  function openMenu() {
+    isOpen = true;
+    mobileMenu?.classList.remove('hidden');
+    // Trigger reflow for transition
+    mobileMenu?.offsetHeight;
+    mobileMenu?.classList.remove('opacity-0', '-translate-y-2');
+    mobileMenu?.classList.add('opacity-100', 'translate-y-0');
+    hamburgerIcon?.classList.add('hidden');
+    closeIcon?.classList.remove('hidden');
+    menuButton?.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeMenu() {
+    isOpen = false;
+    mobileMenu?.classList.remove('opacity-100', 'translate-y-0');
+    mobileMenu?.classList.add('opacity-0', '-translate-y-2');
+    hamburgerIcon?.classList.remove('hidden');
+    closeIcon?.classList.add('hidden');
+    menuButton?.setAttribute('aria-expanded', 'false');
+    // Hide after transition
+    setTimeout(() => {
+      if (!isOpen) {
+        mobileMenu?.classList.add('hidden');
+      }
+    }, 200);
+  }
+
+  function toggleMenu() {
+    if (isOpen) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  }
+
+  // Toggle on button click
+  menuButton?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMenu();
+  });
+
+  // Close on link click
+  mobileMenuLinks.forEach(link => {
+    link.addEventListener('click', closeMenu);
+  });
+
+  // Close on click outside
+  document.addEventListener('click', (e) => {
+    if (isOpen && !mobileMenu?.contains(e.target as Node) && !menuButton?.contains(e.target as Node)) {
+      closeMenu();
+    }
+  });
+
+  // Close on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isOpen) {
+      closeMenu();
+    }
+  });
+</script>

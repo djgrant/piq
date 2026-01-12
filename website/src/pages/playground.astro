@@ -1,0 +1,541 @@
+---
+export const prerender = true;
+
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+
+const defaultQuery = `// Query the posts collection
+import { piq } from 'piqit'
+
+export default async function() {
+  // Get all 2024 posts by alice
+  const posts = await piq.from('posts')
+    .scan({ year: '2024' })
+    .filter({ author: 'alice' })
+    .select(
+      'params.slug',
+      'frontmatter.title',
+      'frontmatter.tags',
+      'body.raw'
+    )
+    .exec()
+
+  return posts
+}`;
+
+// Sample files matching the samplePosts in api/query.ts
+const sampleFiles = {
+  'posts/2024/hello-world.md': {
+    frontmatter: { title: 'Hello World', tags: ['intro', 'welcome'], author: 'alice' },
+    body: '# Hello World\n\nWelcome to the blog.'
+  },
+  'posts/2024/typescript-tips.md': {
+    frontmatter: { title: 'TypeScript Tips', tags: ['typescript', 'tips'], author: 'bob' },
+    body: '# TypeScript Tips\n\nSome useful tips.'
+  },
+  'posts/2023/old-news.md': {
+    frontmatter: { title: 'Old News', tags: ['archive'], author: 'alice' },
+    body: '# Old News\n\nThis is from last year.'
+  }
+};
+
+const sampleFilesJson = JSON.stringify(sampleFiles);
+---
+
+<Layout title="Playground — piq">
+  <Header currentPath="/playground" fullWidth={true} />
+  
+  <!-- Mobile notice -->
+  <div
+    class="lg:hidden fixed inset-0 z-50 bg-[var(--color-bg)]/95 dark:bg-[var(--color-bg-dark)]/95 flex items-center justify-center p-8"
+    id="mobile-notice"
+  >
+    <div class="text-center max-w-sm">
+      <svg
+        class="w-16 h-16 mx-auto mb-4 text-[var(--color-muted)] dark:text-[var(--color-muted-dark)]"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.5"
+          d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+        ></path>
+      </svg>
+      <h2
+        class="text-xl font-medium mb-2 text-[var(--color-text)] dark:text-[var(--color-text-dark)]"
+      >
+        Best on Desktop
+      </h2>
+      <p
+        class="text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] mb-6"
+      >
+        The playground works best on larger screens where you can see the file browser, editor, and results side by side.
+      </p>
+      <button
+        onclick="document.getElementById('mobile-notice').remove()"
+        class="px-4 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:opacity-90 transition-opacity"
+      >
+        Continue Anyway
+      </button>
+    </div>
+  </div>
+
+  <div class="h-[calc(100vh-4rem)] flex flex-col">
+    <!-- Main area with sidebar -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Sidebar - hidden on mobile -->
+      <div
+        id="sidebar"
+        class="hidden lg:flex flex-col w-60 border-r border-[var(--color-border)] dark:border-[var(--color-border-dark)] bg-[var(--color-bg)] dark:bg-[var(--color-bg-dark)]"
+      >
+        <!-- Files Section -->
+        <div class="flex-1 overflow-auto">
+          <div class="text-xs font-medium text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] uppercase tracking-wide px-3 py-2">Files</div>
+          <div id="file-tree" class="px-2 pb-3"></div>
+        </div>
+        
+        <!-- File Preview -->
+        <div id="file-preview-container" class="hidden border-t border-[var(--color-border)] dark:border-[var(--color-border-dark)] flex-col max-h-[40%]">
+          <div class="text-xs font-medium text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] uppercase tracking-wide px-3 py-2 flex items-center justify-between">
+            <span>Preview</span>
+            <button id="close-preview" class="hover:text-[var(--color-text)] dark:hover:text-[var(--color-text-dark)]">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          <div id="file-preview" class="flex-1 overflow-auto px-3 pb-3 text-xs font-mono"></div>
+        </div>
+      </div>
+
+      <!-- Editor and Output area -->
+      <div class="flex-1 flex flex-col lg:flex-row min-h-0">
+        <!-- Editor -->
+        <div class="flex-1 border-b lg:border-b-0 lg:border-r border-[var(--color-border)] dark:border-[var(--color-border-dark)] flex flex-col min-h-0 relative">
+          <div id="editor" class="flex-1 min-h-0"></div>
+          <button 
+            id="run-btn"
+            class="absolute top-3 right-7 px-2.5 py-2 bg-[#2a2a2a]/80 hover:bg-[#3a3a3a] text-[#888] hover:text-[#aaa] rounded border border-[#444]/50 transition-colors flex items-center gap-0.5 z-10"
+            title="Run query"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/></svg>
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>
+          </button>
+        </div>
+
+        <!-- Output -->
+        <div class="flex-1 flex flex-col min-h-0 bg-[#1a1a1a]">
+          <div class="px-4 py-2 border-b border-[var(--color-border-dark)] text-xs text-[var(--color-muted-dark)] uppercase tracking-wide">
+            Output
+          </div>
+          <pre id="output" class="flex-1 overflow-auto p-4 text-sm font-mono text-[#E5E5E5] m-0 rounded-none bg-[#1a1a1a]"><span class="text-[var(--color-muted-dark)]">// Press ⌘↵ to run</span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<!-- Inject sample files data -->
+<script is:inline define:vars={{ sampleFilesJson }}>
+  window.__SAMPLE_FILES__ = JSON.parse(sampleFilesJson);
+</script>
+
+<script define:vars={{ defaultQuery }}>
+  // Monaco editor setup
+  const editorContainer = document.getElementById('editor');
+  const output = document.getElementById('output');
+  const runBtn = document.getElementById('run-btn');
+  const fileTree = document.getElementById('file-tree');
+  const filePreviewContainer = document.getElementById('file-preview-container');
+  const filePreview = document.getElementById('file-preview');
+  const closePreviewBtn = document.getElementById('close-preview');
+  
+  let editor;
+  let selectedFile = null;
+  const sampleFiles = window.__SAMPLE_FILES__;
+  
+  // Track expanded folders
+  const expandedFolders = new Set(['posts', 'posts/2024', 'posts/2023']);
+
+  // Build file tree structure
+  function buildFileTree(filePaths) {
+    const root = { name: '', path: '', type: 'folder', children: [] };
+    
+    for (const filePath of filePaths) {
+      const parts = filePath.split('/');
+      let current = root;
+      let pathSoFar = '';
+      
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        pathSoFar = pathSoFar ? `${pathSoFar}/${part}` : part;
+        const isFile = i === parts.length - 1;
+        
+        let child = current.children.find(c => c.name === part);
+        
+        if (!child) {
+          child = {
+            name: part,
+            path: pathSoFar,
+            type: isFile ? 'file' : 'folder',
+            children: []
+          };
+          current.children.push(child);
+        }
+        
+        current = child;
+      }
+    }
+    
+    // Sort: folders first, then alphabetically
+    function sortTree(node) {
+      node.children.sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+      node.children.forEach(sortTree);
+    }
+    sortTree(root);
+    
+    return root;
+  }
+
+  // Render tree node
+  function renderTreeNode(node, depth = 0) {
+    const isFolder = node.type === 'folder';
+    const isExpanded = expandedFolders.has(node.path);
+    const isActive = !isFolder && node.path === selectedFile;
+    
+    const indent = depth * 14;
+    
+    const chevronIcon = `<svg class="tree-chevron ${isExpanded ? 'expanded' : ''}" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>`;
+    const folderIcon = `<svg class="tree-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
+    const fileIcon = `<svg class="tree-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6z"/><path d="M14 2v6h6"/></svg>`;
+    
+    let html = '';
+    
+    if (isFolder) {
+      html = `
+        <li class="tree-item tree-folder ${isExpanded ? 'expanded' : ''}" 
+            style="padding-left: ${indent}px"
+            data-path="${node.path}"
+            data-type="folder">
+          ${chevronIcon}
+          ${folderIcon}
+          <span class="tree-name">${node.name}</span>
+        </li>`;
+      
+      if (isExpanded && node.children.length > 0) {
+        for (const child of node.children) {
+          html += renderTreeNode(child, depth + 1);
+        }
+      }
+    } else {
+      const fileIndent = indent + 17;
+      html = `
+        <li class="tree-item tree-file ${isActive ? 'active' : ''}"
+            style="padding-left: ${fileIndent}px"
+            data-path="${node.path}"
+            data-type="file">
+          ${fileIcon}
+          <span class="tree-name">${node.name}</span>
+        </li>`;
+    }
+    
+    return html;
+  }
+
+  // Render the file tree
+  function renderFileTree() {
+    const filePaths = Object.keys(sampleFiles);
+    const tree = buildFileTree(filePaths);
+    
+    let html = '<ul class="tree-list">';
+    for (const child of tree.children) {
+      html += renderTreeNode(child);
+    }
+    html += '</ul>';
+    
+    fileTree.innerHTML = html;
+    
+    // Add click handlers
+    fileTree.querySelectorAll('.tree-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const path = item.dataset.path;
+        const type = item.dataset.type;
+        
+        if (type === 'folder') {
+          toggleFolder(path);
+        } else {
+          selectFile(path);
+        }
+      });
+    });
+  }
+
+  // Toggle folder expansion
+  function toggleFolder(path) {
+    if (expandedFolders.has(path)) {
+      expandedFolders.delete(path);
+    } else {
+      expandedFolders.add(path);
+    }
+    renderFileTree();
+  }
+
+  // Select a file and show preview
+  function selectFile(path) {
+    selectedFile = path;
+    renderFileTree();
+    showFilePreview(path);
+  }
+
+  // Show file preview
+  function showFilePreview(path) {
+    const file = sampleFiles[path];
+    if (!file) return;
+    
+    filePreviewContainer.classList.remove('hidden');
+    filePreviewContainer.classList.add('flex');
+    
+    // Format frontmatter as YAML
+    const frontmatterYaml = Object.entries(file.frontmatter)
+      .map(([key, value]) => {
+        if (Array.isArray(value)) {
+          return `${key}: [${value.map(v => `'${v}'`).join(', ')}]`;
+        }
+        return `${key}: '${value}'`;
+      })
+      .join('\n');
+    
+    filePreview.innerHTML = `
+      <div class="text-[var(--color-muted)] dark:text-[var(--color-muted-dark)]">---</div>
+      <div class="text-[#22C55E] dark:text-[#4ADE80]">${frontmatterYaml.replace(/\n/g, '<br>')}</div>
+      <div class="text-[var(--color-muted)] dark:text-[var(--color-muted-dark)]">---</div>
+      <div class="mt-2 text-[var(--color-text)] dark:text-[var(--color-text-dark)] whitespace-pre-wrap">${file.body}</div>
+    `;
+  }
+
+  // Close preview
+  closePreviewBtn?.addEventListener('click', () => {
+    filePreviewContainer.classList.add('hidden');
+    filePreviewContainer.classList.remove('flex');
+    selectedFile = null;
+    renderFileTree();
+  });
+
+  // Load Monaco
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js';
+  script.onload = () => {
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+    require(['vs/editor/editor.main'], function() {
+      // Configure TypeScript
+      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+        target: monaco.languages.typescript.ScriptTarget.ESNext,
+        module: monaco.languages.typescript.ModuleKind.ESNext,
+        moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+        allowNonTsExtensions: true,
+        strict: true,
+      });
+
+      // Add piq type declarations
+      const piqTypes = `
+        declare module 'piqit' {
+          type PostsPaths = 
+            | 'params.year' 
+            | 'params.slug' 
+            | 'frontmatter.title' 
+            | 'frontmatter.tags' 
+            | 'frontmatter.author'
+            | 'body.raw'
+            | 'body.html'
+            | 'body.headings';
+
+          interface SelectBuilder {
+            exec(): Promise<Array<Record<string, unknown>>>;
+            single(): { exec(): Promise<Record<string, unknown> | undefined>; execOrThrow(): Promise<Record<string, unknown>>; };
+            stream(): AsyncIterable<Record<string, unknown>>;
+          }
+
+          interface QueryBuilder<TPaths extends string> {
+            scan(constraints: Record<string, string>): this;
+            filter(constraints: Record<string, unknown>): this;
+            select(...paths: TPaths[]): SelectBuilder;
+            single(): { select(...paths: TPaths[]): { exec(): Promise<Record<string, unknown> | undefined>; execOrThrow(): Promise<Record<string, unknown>>; }; };
+          }
+
+          interface Piq {
+            from(name: 'posts'): QueryBuilder<PostsPaths>;
+          }
+
+          export const piq: Piq;
+        }
+      `;
+
+      monaco.languages.typescript.typescriptDefaults.addExtraLib(piqTypes, 'node_modules/piqit/index.d.ts');
+
+      // Create editor
+      editor = monaco.editor.create(editorContainer, {
+        value: defaultQuery,
+        language: 'typescript',
+        theme: 'vs-dark',
+        minimap: { enabled: false },
+        fontSize: 13,
+        lineNumbers: 'on',
+        automaticLayout: true,
+        padding: { top: 16 },
+        scrollBeyondLastLine: false,
+      });
+
+      // Keyboard shortcut
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runQuery);
+    });
+  };
+  document.head.appendChild(script);
+
+  // Run query
+  async function runQuery() {
+    const code = editor.getValue();
+    output.innerHTML = '<span class="text-[var(--color-muted-dark)]">// Running...</span>';
+    
+    try {
+      const res = await fetch('/api/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        output.innerHTML = '<span style="color: #10B981">// Success</span>\n' + 
+          JSON.stringify(data.result, null, 2);
+      } else {
+        output.innerHTML = '<span style="color: #EF4444">// Error</span>\n' + data.error;
+      }
+    } catch (err) {
+      output.innerHTML = '<span style="color: #EF4444">// Error</span>\n' + err.message;
+    }
+  }
+
+  runBtn.addEventListener('click', runQuery);
+  
+  // Initialize file tree
+  renderFileTree();
+</script>
+
+<style>
+  #editor {
+    background: #1e1e1e;
+  }
+
+  /* File tree styles (VS Code-style) */
+  :global(.tree-list) {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  :global(.tree-item) {
+    display: flex;
+    align-items: center;
+    height: 22px;
+    padding-right: 8px;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    border-radius: 3px;
+  }
+
+  :global(.tree-item:hover) {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  :global(.dark .tree-item:hover) {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  :global(.tree-item.active) {
+    background-color: var(--color-accent);
+    color: white;
+  }
+
+  :global(.tree-item.active:hover) {
+    background-color: var(--color-accent);
+  }
+
+  :global(.tree-item.active .tree-icon) {
+    color: white;
+  }
+
+  :global(.tree-item.active .tree-chevron) {
+    color: white;
+  }
+
+  :global(.tree-chevron) {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    margin-right: 2px;
+    color: var(--color-muted);
+    transition: transform 0.15s ease;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(.tree-chevron) {
+      color: #A3A3A3;
+    }
+  }
+
+  :global(.tree-chevron.expanded) {
+    transform: rotate(90deg);
+  }
+
+  :global(.tree-icon) {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    margin-right: 4px;
+    color: var(--color-muted);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(.tree-icon) {
+      color: #A3A3A3;
+    }
+  }
+
+  :global(.tree-folder .tree-icon) {
+    color: #e8a838;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(.tree-folder .tree-icon) {
+      color: #e8a838;
+    }
+  }
+
+  :global(.tree-name) {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 22px;
+    color: #171717;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(.tree-name) {
+      color: #EDEDED;
+    }
+  }
+
+  :global(.tree-item.active .tree-name) {
+    color: white;
+  }
+</style>

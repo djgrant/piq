@@ -1,0 +1,260 @@
+---
+export const prerender = true;
+
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+
+const collectionExample = `<span class="syn-keyword">import</span> { register } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
+<span class="syn-keyword">import</span> { fileMarkdown } <span class="syn-keyword">from</span> <span class="syn-string">'@piqit/resolvers'</span>
+
+<span class="syn-keyword">const</span> posts = fileMarkdown({
+  base: <span class="syn-string">'content/posts'</span>,
+  path: <span class="syn-string">'{year}/{slug}.md'</span>,
+  frontmatter: z.object({
+    title: z.string(),
+    status: z.enum([<span class="syn-string">'draft'</span>, <span class="syn-string">'published'</span>]),
+  }),
+  body: { html: <span class="syn-keyword">true</span> }
+})
+
+register(<span class="syn-string">'posts'</span>, posts)`;
+
+const queryExample = `<span class="syn-keyword">import</span> { piq } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
+
+<span class="syn-comment">// Query: scan → filter → select</span>
+<span class="syn-keyword">const</span> results = <span class="syn-keyword">await</span> piq.from(<span class="syn-string">'posts'</span>)
+  .scan({ year: <span class="syn-string">'2024'</span> })
+  .filter({ status: <span class="syn-string">'published'</span> })
+  .select(
+    <span class="syn-string">'params.slug'</span>,
+    <span class="syn-string">'frontmatter.title'</span>,
+    <span class="syn-string">'body.html'</span>
+  )
+  .exec()
+
+<span class="syn-comment">// Results are flat and fully typed:</span>
+<span class="syn-comment">// [{ slug, title, html }]</span>`;
+---
+
+<Layout title="piq — query layer for document collections">
+  <Header currentPath="/" />
+
+  <main>
+    <!-- Hero -->
+    <section class="relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-b from-[var(--color-accent)]/5 to-transparent pointer-events-none"></div>
+
+      <div class="max-w-[var(--max-width-content)] mx-auto px-[var(--spacing-page)] pt-16 pb-10 md:pt-20 md:pb-12">
+        <div class="max-w-xl">
+          <h1 class="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight mb-6 text-[var(--color-text)] dark:text-[var(--color-text-dark)]">
+            The type-safe query engine for document storage
+          </h1>
+          <p class="text-lg md:text-xl text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] mb-10 max-w-xl leading-relaxed">
+            Turn filesystems, S3 buckets, Git repos, and external APIs into a structured, queryable interface.
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <a
+              href="/docs"
+              class="inline-flex items-center px-6 py-3 bg-[var(--color-accent)] hover:bg-[var(--color-accent-light)] text-white font-medium rounded-lg transition-colors"
+            >
+              Get Started
+              <svg class="ml-2 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+            <a
+              href="/playground"
+              class="inline-flex items-center px-6 py-3 border border-[var(--color-border)] dark:border-[var(--color-border-dark)] hover:border-[var(--color-accent)] text-[var(--color-text)] dark:text-[var(--color-text-dark)] font-medium rounded-lg transition-colors"
+            >
+              Try Playground
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Code example -->
+    <section class="pt-8 pb-16 md:pt-12 md:pb-24">
+      <div class="max-w-[var(--max-width-content)] mx-auto px-[var(--spacing-page)]">
+        <div class="grid md:grid-cols-2 gap-8 items-stretch">
+          <!-- Collection Panel -->
+          <div class="relative min-w-0 flex flex-col">
+            <div class="absolute -inset-2 bg-gradient-to-r from-[var(--color-accent)]/20 to-transparent rounded-xl blur-xl opacity-50"></div>
+            <div class="relative flex flex-col flex-1">
+              <div class="text-xs font-medium text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] mb-2 uppercase tracking-wide">Collection</div>
+              <pre class="rounded-xl text-sm leading-relaxed flex-1" set:html={collectionExample} />
+            </div>
+          </div>
+
+          <!-- Query Panel -->
+          <div class="relative min-w-0 flex flex-col">
+            <div class="absolute -inset-2 bg-gradient-to-l from-[var(--color-accent)]/20 to-transparent rounded-xl blur-xl opacity-50"></div>
+            <div class="relative flex flex-col flex-1">
+              <div class="text-xs font-medium text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] mb-2 uppercase tracking-wide">Query</div>
+              <pre class="rounded-xl text-sm leading-relaxed flex-1" set:html={queryExample} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- When to use / not use -->
+    <section class="py-16 md:py-24 bg-[var(--color-bg)] dark:bg-[var(--color-bg-dark)] border-y border-[var(--color-border)] dark:border-[var(--color-border-dark)]">
+      <div class="max-w-[var(--max-width-content)] mx-auto px-[var(--spacing-page)]">
+        <div class="grid md:grid-cols-2 gap-12 md:gap-16">
+
+          <!-- When to use -->
+          <div>
+            <h2 class="text-xl font-medium mb-6 text-[var(--color-text)] dark:text-[var(--color-text-dark)]">
+              When to use piq
+            </h2>
+            <ul class="space-y-4 text-[var(--color-muted)] dark:text-[var(--color-muted-dark)]">
+              <li class="flex gap-3">
+                <span class="text-[var(--color-accent)] mt-0.5">→</span>
+                <span>Agent workflows that generate and query millions of files</span>
+              </li>
+              <li class="flex gap-3">
+                <span class="text-[var(--color-accent)] mt-0.5">→</span>
+                <span>Runtime environments where memory and I/O are expensive</span>
+              </li>
+              <li class="flex gap-3">
+                <span class="text-[var(--color-accent)] mt-0.5">→</span>
+                <span>When you want explicit control over resolution cost</span>
+              </li>
+              <li class="flex gap-3">
+                <span class="text-[var(--color-accent)] mt-0.5">→</span>
+                <span>Projects where you can design query patterns upfront</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- When not to use -->
+          <div>
+            <h2 class="text-xl font-medium mb-6 text-[var(--color-text)] dark:text-[var(--color-text-dark)]">
+              When not to use piq
+            </h2>
+            <ul class="space-y-4 text-[var(--color-muted)] dark:text-[var(--color-muted-dark)]">
+              <li class="flex gap-3">
+                <span class="text-[var(--color-muted)] mt-0.5">×</span>
+                <span>You need writes, updates, or transactions</span>
+              </li>
+              <li class="flex gap-3">
+                <span class="text-[var(--color-muted)] mt-0.5">×</span>
+                <span>You need joins at the query layer</span>
+              </li>
+              <li class="flex gap-3">
+                <span class="text-[var(--color-muted)] mt-0.5">×</span>
+                <span>You are running ad-hoc analytical queries</span>
+              </li>
+              <li class="flex gap-3">
+                <span class="text-[var(--color-muted)] mt-0.5">×</span>
+                <span>You don't want to predesign your access patterns</span>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Core ideas -->
+    <section class="py-16 md:py-24">
+      <div class="max-w-[var(--max-width-content)] mx-auto px-[var(--spacing-page)]">
+        <h2 class="text-2xl md:text-3xl font-medium mb-4 text-center text-[var(--color-text)] dark:text-[var(--color-text-dark)]">
+          The piq way
+        </h2>
+        <p class="text-center text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] mb-12 max-w-xl mx-auto">
+          piq makes resolution cost visible. The API contract exposes the true performance cost of each query.
+        </p>
+
+        <div class="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div class="text-center">
+            <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-[var(--color-accent)]/10 flex items-center justify-center">
+              <svg class="w-6 h-6 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h3 class="font-medium mb-2 text-[var(--color-text)] dark:text-[var(--color-text-dark)]">Precision I/O</h3>
+            <p class="text-sm text-[var(--color-muted)] dark:text-[var(--color-muted-dark)]">
+              The API exposes perf cost, encouraging the writing of efficient queries.
+            </p>
+          </div>
+
+          <div class="text-center">
+            <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-[var(--color-accent)]/10 flex items-center justify-center">
+              <svg class="w-6 h-6 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 class="font-medium mb-2 text-[var(--color-text)] dark:text-[var(--color-text-dark)]">Schema-on-Read</h3>
+            <p class="text-sm text-[var(--color-muted)] dark:text-[var(--color-muted-dark)]">
+              Define your data shape up front with Zod. Get a fully-typed query client in return.
+            </p>
+          </div>
+
+          <div class="text-center">
+            <div class="w-12 h-12 mx-auto mb-4 rounded-lg bg-[var(--color-accent)]/10 flex items-center justify-center">
+              <svg class="w-6 h-6 text-[var(--color-accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </div>
+            <h3 class="font-medium mb-2 text-[var(--color-text)] dark:text-[var(--color-text-dark)]">Source Agnostic</h3>
+            <p class="text-sm text-[var(--color-muted)] dark:text-[var(--color-muted-dark)]">
+              Decouple queries from storage. Run the same queries against different sources.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Install -->
+    <section class="py-16 md:py-24 bg-[var(--color-bg)] dark:bg-[var(--color-bg-dark)] border-y border-[var(--color-border)] dark:border-[var(--color-border-dark)]">
+      <div class="max-w-[var(--max-width-content)] mx-auto px-[var(--spacing-page)]">
+        <div class="max-w-2xl mx-auto text-center">
+          <h2 class="text-2xl md:text-3xl font-medium mb-6 text-[var(--color-text)] dark:text-[var(--color-text-dark)]">
+            Get Started
+          </h2>
+
+          <pre class="text-left text-sm rounded-xl mb-8"><code>npm install piqit @piqit/resolvers</code></pre>
+
+          <div class="flex flex-wrap justify-center gap-4">
+            <a href="/docs" class="inline-flex items-center text-[var(--color-accent)] hover:text-[var(--color-accent-light)] font-medium transition-colors">
+              Read the docs
+              <svg class="ml-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+            <a href="/playground" class="inline-flex items-center text-[var(--color-accent)] hover:text-[var(--color-accent-light)] font-medium transition-colors">
+              Try playground
+              <svg class="ml-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-8 border-t border-[var(--color-border)] dark:border-[var(--color-border-dark)]">
+    <div class="max-w-[var(--max-width-content)] mx-auto px-[var(--spacing-page)]">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-sm text-[var(--color-muted)] dark:text-[var(--color-muted-dark)]">
+          MIT · Created by <a href="https://danielgrant.co" class="hover:text-[var(--color-text)] dark:hover:text-[var(--color-text-dark)] underline transition-colors">Daniel Grant</a>
+        </p>
+        <a
+          href="https://github.com/djgrant/piq"
+          class="inline-flex items-center gap-2 text-sm text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] hover:text-[var(--color-text)] dark:hover:text-[var(--color-text-dark)] transition-colors"
+        >
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+          </svg>
+          Star on GitHub
+        </a>
+      </div>
+    </div>
+  </footer>
+</Layout>

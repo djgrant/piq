@@ -1,0 +1,80 @@
+---
+export const prerender = true;
+
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+const codeDefineResolver = `<span class="syn-keyword">import</span> { piq, register } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
+<span class="syn-keyword">import</span> { fileMarkdown } <span class="syn-keyword">from</span> <span class="syn-string">'@piqit/resolvers'</span>
+<span class="syn-keyword">import</span> { z } <span class="syn-keyword">from</span> <span class="syn-string">'zod'</span>
+
+<span class="syn-keyword">const</span> posts = fileMarkdown({
+  base: <span class="syn-string">'content/posts'</span>,
+  path: <span class="syn-string">'{year}/{slug}.md'</span>,
+  frontmatter: z.object({
+    title: z.string(),
+    status: z.enum([<span class="syn-string">'draft'</span>, <span class="syn-string">'published'</span>]),
+    tags: z.array(z.string()),
+  }),
+  body: { html: <span class="syn-keyword">true</span>, headings: <span class="syn-keyword">true</span> }
+})
+
+<span class="syn-comment">// Register the resolver</span>
+register(<span class="syn-string">'posts'</span>, posts)`;
+
+const codeQuery = `<span class="syn-keyword">const</span> results = <span class="syn-keyword">await</span> piq.from(<span class="syn-string">'posts'</span>)
+  .scan({ year: <span class="syn-string">'2024'</span> })
+  .filter({ status: <span class="syn-string">'published'</span> })
+  .select(<span class="syn-string">'params.slug'</span>, <span class="syn-string">'frontmatter.title'</span>, <span class="syn-string">'body.html'</span>)
+  .exec()
+
+<span class="syn-comment">// Results are flat:</span>
+<span class="syn-comment">// [{ slug: 'hello-world', title: 'Hello World', html: '&lt;p&gt;...' }]</span>`;
+---
+
+<DocsLayout title="Getting Started">
+  <h1>Getting Started</h1>
+
+  <p>
+    piq is a query layer for document collections. It's designed for content-heavy applications
+    where you're reading structured sources (markdown, JSON, S3 etc.) and want explicit control over
+    resolution cost.
+  </p>
+
+  <h2>Installation</h2>
+
+  <pre><code>npm install piqit @piqit/resolvers</code></pre>
+
+  <p>
+    <code>piqit</code> is the core query builder. <code>@piqit/resolvers</code> provides
+    resolvers for common content sources like markdown files.
+  </p>
+
+  <h2>Quick Start</h2>
+
+  <p>Define a resolver for your content and register it:</p>
+
+  <pre set:html={codeDefineResolver} />
+
+  <p>Query your content:</p>
+
+  <pre set:html={codeQuery} />
+
+  <h2>The Query Pipeline</h2>
+
+  <p>
+    Every piq query follows the same pattern: <strong>scan → filter → select → exec</strong>.
+    Each step has a cost, and the API makes that cost visible.
+  </p>
+
+  <ul>
+    <li><strong>scan()</strong> — Enumerate items by path pattern. Cheapest operation.</li>
+    <li><strong>filter()</strong> — Narrow by document content. Requires reading frontmatter.</li>
+    <li><strong>select()</strong> — Declare which fields to return. Controls what gets parsed.</li>
+    <li><strong>exec()</strong> — Execute and return results as an array.</li>
+  </ul>
+
+  <p>
+    Read <a href="/docs/concepts">Concepts</a> to understand the cost model, or jump to the
+    <a href="/docs/api">API Reference</a> for full details.
+  </p>
+</DocsLayout>

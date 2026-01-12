@@ -1,0 +1,6 @@
+name = "piq-website"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare Pages deployment
+# Deploy with: pnpm push
