@@ -11,7 +11,7 @@
  */
 
 import { posts, workPackages, type Post, type WorkPackage } from "./generated/content";
-import { staticContent } from "@piqit/resolvers";
+import { staticContent } from "@piqit/resolvers/edge";
 import { fromResolver } from "piqit";
 
 // =============================================================================
