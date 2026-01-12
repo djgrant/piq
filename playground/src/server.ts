@@ -382,13 +382,13 @@ export default async function() {
           type CollectionName = keyof CollectionMap;
 
           interface Piq {
-            from<K extends CollectionName>(
-              name: K
-            ): QueryBuilder<CollectionMap[K]["params"], CollectionMap[K]["frontmatter"], CollectionMap[K]["body"]>;
+            from<TParams, TFrontmatter, TBody>(
+              resolver: unknown
+            ): QueryBuilder<TParams, TFrontmatter, TBody>;
           }
 
           export const piq: Piq;
-          export function fromResolver<TParams, TFrontmatter, TBody>(
+          export function from<TParams, TFrontmatter, TBody>(
             resolver: unknown
           ): QueryBuilder<TParams, TFrontmatter, TBody>;
         }

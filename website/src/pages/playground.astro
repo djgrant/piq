@@ -6,10 +6,11 @@ import Header from "../components/Header.astro";
 
 const defaultQuery = `// Query the posts collection
 import { piq } from 'piqit'
+import { posts } from './resolvers'
 
 export default async function() {
   // Get all 2024 posts by alice
-  const posts = await piq.from('posts')
+  const results = await piq.from(posts)
     .scan({ year: '2024' })
     .filter({ author: 'alice' })
     .select(
@@ -20,7 +21,7 @@ export default async function() {
     )
     .exec()
 
-  return posts
+  return results
 }`;
 
 // Sample files matching the samplePosts in api/query.ts
@@ -370,7 +371,7 @@ const sampleFilesJson = JSON.stringify(sampleFiles);
           }
 
           interface Piq {
-            from(name: 'posts'): QueryBuilder<PostsPaths>;
+            from(resolver: unknown): QueryBuilder<PostsPaths>;
           }
 
           export const piq: Piq;

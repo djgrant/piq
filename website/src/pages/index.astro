@@ -4,8 +4,7 @@ export const prerender = true;
 import Layout from "../layouts/Layout.astro";
 import Header from "../components/Header.astro";
 
-const collectionExample = `<span class="syn-keyword">import</span> { register } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
-<span class="syn-keyword">import</span> { fileMarkdown } <span class="syn-keyword">from</span> <span class="syn-string">'@piqit/resolvers'</span>
+const collectionExample = `<span class="syn-keyword">import</span> { fileMarkdown } <span class="syn-keyword">from</span> <span class="syn-string">'@piqit/resolvers'</span>
 
 <span class="syn-keyword">const</span> posts = fileMarkdown({
   base: <span class="syn-string">'content/posts'</span>,
@@ -15,14 +14,12 @@ const collectionExample = `<span class="syn-keyword">import</span> { register } 
     status: z.enum([<span class="syn-string">'draft'</span>, <span class="syn-string">'published'</span>]),
   }),
   body: { html: <span class="syn-keyword">true</span> }
-})
-
-register(<span class="syn-string">'posts'</span>, posts)`;
+})`;
 
 const queryExample = `<span class="syn-keyword">import</span> { piq } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
 
 <span class="syn-comment">// Query: scan → filter → select</span>
-<span class="syn-keyword">const</span> results = <span class="syn-keyword">await</span> piq.from(<span class="syn-string">'posts'</span>)
+<span class="syn-keyword">const</span> results = <span class="syn-keyword">await</span> piq.from(posts)
   .scan({ year: <span class="syn-string">'2024'</span> })
   .filter({ status: <span class="syn-string">'published'</span> })
   .select(

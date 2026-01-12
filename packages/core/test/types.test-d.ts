@@ -5,7 +5,7 @@
  * Run with: bun run --bun tsc --noEmit
  */
 
-import { piq, fromResolver, register, clearRegistry } from "../src"
+import { piq, from } from "../src"
 import { fileMarkdown } from "@piqit/resolvers"
 import type { StandardSchema } from "../src/types"
 
@@ -51,7 +51,7 @@ declare function assertType<T extends true>(): void
 
 // Test: Basic select infers correct types
 async function testBasicSelectInference() {
-  const result = await fromResolver(resolver)
+  const result = await from(resolver)
     .select("params.slug")
     .single()
     .exec()
@@ -65,7 +65,7 @@ async function testBasicSelectInference() {
 
 // Test: Multi-select infers all fields
 async function testMultiSelectInference() {
-  const results = await fromResolver(resolver)
+  const results = await from(resolver)
     .select("params.slug", "frontmatter.title")
     .exec()
 
@@ -80,7 +80,7 @@ async function testMultiSelectInference() {
 
 // Test: Alias select uses alias names
 async function testAliasSelectInference() {
-  const results = await fromResolver(resolver)
+  const results = await from(resolver)
     .select({ mySlug: "params.slug", myTitle: "frontmatter.title" })
     .exec()
 
@@ -95,7 +95,7 @@ async function testAliasSelectInference() {
 
 // Test: single() returns undefined union
 async function testSingleReturnType() {
-  const result = await fromResolver(resolver)
+  const result = await from(resolver)
     .select("params.slug")
     .single()
     .exec()
@@ -111,7 +111,7 @@ async function testSingleReturnType() {
 
 // Test: execOrThrow() does NOT return undefined
 async function testExecOrThrowType() {
-  const result = await fromResolver(resolver)
+  const result = await from(resolver)
     .select("params.slug")
     .single()
     .execOrThrow()
@@ -123,7 +123,7 @@ async function testExecOrThrowType() {
 
 // Test: stream() yields correct type
 async function testStreamType() {
-  const stream = fromResolver(resolver).select("params.slug").stream()
+  const stream = from(resolver).select("params.slug").stream()
 
   for await (const item of stream) {
     const slug: string = item.slug
@@ -167,7 +167,7 @@ async function _testInvalidNamespace() {
 
 // Test: Scan accepts partial path params
 async function testScanType() {
-  const results = await fromResolver(resolver)
+  const results = await from(resolver)
     .scan({ year: "2024" }) // Only providing year, not slug
     .select("params.slug")
     .exec()
@@ -177,7 +177,7 @@ async function testScanType() {
 
 // Test: Filter accepts partial frontmatter fields
 async function testFilterType() {
-  const results = await fromResolver(resolver)
+  const results = await from(resolver)
     .filter({ status: "published" }) // Only providing status, not title
     .select("params.slug")
     .exec()
@@ -191,7 +191,7 @@ async function testFilterType() {
 
 // Test: Chained methods preserve types
 async function testChainingTypes() {
-  const results = await fromResolver(resolver)
+  const results = await from(resolver)
     .scan({ year: "2024" })
     .filter({ status: "published" })
     .select("params.slug", "frontmatter.title")
@@ -207,7 +207,7 @@ async function testChainingTypes() {
 
 // Test: select() creates new builder (for type transformation)
 async function testSelectCreatesNewBuilder() {
-  const base = fromResolver(resolver)
+  const base = from(resolver)
   const withFilter = base.filter({ status: "published" })
 
   // Before select - result type is full resolver result

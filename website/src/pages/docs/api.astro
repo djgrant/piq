@@ -3,20 +3,20 @@ export const prerender = true;
 
 import DocsLayout from "../../layouts/DocsLayout.astro";
 
-const codeFromResolver = `<span class="syn-keyword">import</span> { piq, register } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
+const codeFromResolver = `<span class="syn-keyword">import</span> { piq } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
 
-<span class="syn-keyword">const</span> query = piq.from(<span class="syn-string">'posts'</span>)`;
+<span class="syn-keyword">const</span> query = piq.from(posts)`;
 
 const codeScan = `<span class="syn-comment">// Find all posts from 2024</span>
-piq.from(<span class="syn-string">'posts'</span>).scan({ year: <span class="syn-string">'2024'</span> })
+piq.from(posts).scan({ year: <span class="syn-string">'2024'</span> })
 
 <span class="syn-comment">// Find a specific post</span>
-piq.from(<span class="syn-string">'posts'</span>).scan({ year: <span class="syn-string">'2024'</span>, slug: <span class="syn-string">'hello-world'</span> })
+piq.from(posts).scan({ year: <span class="syn-string">'2024'</span>, slug: <span class="syn-string">'hello-world'</span> })
 
 <span class="syn-comment">// Find all posts (empty constraints)</span>
-piq.from(<span class="syn-string">'posts'</span>).scan({})`;
+piq.from(posts).scan({})`;
 
-const codeFilter = `piq.from(<span class="syn-string">'posts'</span>)
+const codeFilter = `piq.from(posts)
   .scan({ year: <span class="syn-string">'2024'</span> })
   .filter({ status: <span class="syn-string">'published'</span> })`;
 
@@ -36,47 +36,31 @@ const codeSelectWildcard = `.select(<span class="syn-string">'params.*'</span>)
 .select(<span class="syn-string">'params.*'</span>, <span class="syn-string">'frontmatter.*'</span>)
 <span class="syn-comment">// Result: { slug, year, title, status, tags, ... }</span>`;
 
-const codeExec = `<span class="syn-keyword">const</span> posts = <span class="syn-keyword">await</span> piq.from(<span class="syn-string">'posts'</span>)
+const codeExec = `<span class="syn-keyword">const</span> results = <span class="syn-keyword">await</span> piq.from(posts)
   .scan({ year: <span class="syn-string">'2024'</span> })
   .select(<span class="syn-string">'params.slug'</span>)
   .exec()
-<span class="syn-comment">// posts: Array&lt;{ slug: string }&gt;</span>`;
+<span class="syn-comment">// results: Array&lt;{ slug: string }&gt;</span>`;
 
 const codeSingle = `<span class="syn-comment">// Returns first result or undefined</span>
-<span class="syn-keyword">const</span> post = <span class="syn-keyword">await</span> piq.from(<span class="syn-string">'posts'</span>)
+<span class="syn-keyword">const</span> post = <span class="syn-keyword">await</span> piq.from(posts)
   .scan({ year: <span class="syn-string">'2024'</span>, slug: <span class="syn-string">'hello-world'</span> })
   .select(<span class="syn-string">'params.slug'</span>, <span class="syn-string">'frontmatter.title'</span>)
   .single()
   .exec()
 
 <span class="syn-comment">// Throws if no results</span>
-<span class="syn-keyword">const</span> post = <span class="syn-keyword">await</span> piq.from(<span class="syn-string">'posts'</span>)
+<span class="syn-keyword">const</span> post = <span class="syn-keyword">await</span> piq.from(posts)
   .scan({ year: <span class="syn-string">'2024'</span>, slug: <span class="syn-string">'hello-world'</span> })
   .select(<span class="syn-string">'params.slug'</span>)
   .single()
   .execOrThrow()`;
 
-const codeStream = `<span class="syn-keyword">for await</span> (<span class="syn-keyword">const</span> post <span class="syn-keyword">of</span> piq.from(<span class="syn-string">'posts'</span>).scan({}).select(<span class="syn-string">'params.slug'</span>).stream()) {
+const codeStream = `<span class="syn-keyword">for await</span> (<span class="syn-keyword">const</span> post <span class="syn-keyword">of</span> piq.from(posts).scan({}).select(<span class="syn-string">'params.slug'</span>).stream()) {
   console.log(post.slug)
 }`;
 
-const codeRegistry = `<span class="syn-keyword">import</span> { piq, register } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
 
-register(<span class="syn-string">'posts'</span>, postsResolver)
-register(<span class="syn-string">'authors'</span>, authorsResolver)
-
-<span class="syn-comment">// Query by name</span>
-<span class="syn-keyword">const</span> posts = <span class="syn-keyword">await</span> piq.from(<span class="syn-string">'posts'</span>)
-  .scan({ year: <span class="syn-string">'2024'</span> })
-  .select(<span class="syn-string">'params.slug'</span>)
-  .exec()`;
-
-const codeRegistryTypes = `<span class="syn-keyword">declare</span> module <span class="syn-string">'piqit'</span> {
-  <span class="syn-keyword">interface</span> <span class="syn-type">Registry</span> {
-    posts: <span class="syn-keyword">typeof</span> postsResolver
-    authors: <span class="syn-keyword">typeof</span> authorsResolver
-  }
-}`;
 ---
 
 <DocsLayout title="API Reference">
@@ -84,7 +68,7 @@ const codeRegistryTypes = `<span class="syn-keyword">declare</span> module <span
 
   <h2>piq.from()</h2>
 
-  <p>Create a query builder from a registered collection name.</p>
+  <p>Create a query builder from a resolver.</p>
 
   <pre><code set:html={codeFromResolver} /></pre>
 
@@ -174,15 +158,4 @@ const codeRegistryTypes = `<span class="syn-keyword">declare</span> module <span
 
   <pre><code set:html={codeStream} /></pre>
 
-  <hr />
-
-  <h2>Registry</h2>
-
-  <p>For apps with multiple collections, register resolvers by name:</p>
-
-  <pre><code set:html={codeRegistry} /></pre>
-
-  <p>For type-safe registry access, extend the Registry interface:</p>
-
-  <pre><code set:html={codeRegistryTypes} /></pre>
 </DocsLayout>

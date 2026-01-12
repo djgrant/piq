@@ -43,11 +43,9 @@ const samplePosts: PostData[] = [
 // Mini piq implementation for the playground
 function createPiq() {
   return {
-    from(collection: string) {
-      if (collection !== 'posts') {
-        throw new Error(`Unknown collection: ${collection}`);
-      }
-      
+    from(_resolver: unknown) {
+      // In the playground, we only have one collection (posts)
+      // The resolver parameter is ignored - we use sample data
       const items = [...samplePosts];
       let scanConstraints: Record<string, string> = {};
       let filterConstraints: Record<string, unknown> = {};
@@ -136,14 +134,14 @@ function createPiq() {
 const QUERY_TEMPLATES: Record<string, (piq: ReturnType<typeof createPiq>) => Promise<unknown>> = {
   // List all posts
   'all-posts': async (piq) => {
-    return piq.from('posts')
+    return piq.from(null) // resolver ignored in playground
       .select('params.year', 'params.slug', 'frontmatter.title', 'frontmatter.tags')
       .exec();
   },
   
   // Posts from 2024
   'posts-2024': async (piq) => {
-    return piq.from('posts')
+    return piq.from(null)
       .scan({ year: '2024' })
       .select('params.slug', 'frontmatter.title', 'frontmatter.author')
       .exec();
@@ -151,7 +149,7 @@ const QUERY_TEMPLATES: Record<string, (piq: ReturnType<typeof createPiq>) => Pro
   
   // Posts by alice
   'posts-by-alice': async (piq) => {
-    return piq.from('posts')
+    return piq.from(null)
       .filter({ author: 'alice' })
       .select('params.year', 'params.slug', 'frontmatter.title')
       .exec();
@@ -159,7 +157,7 @@ const QUERY_TEMPLATES: Record<string, (piq: ReturnType<typeof createPiq>) => Pro
   
   // Single post
   'single-post': async (piq) => {
-    return piq.from('posts')
+    return piq.from(null)
       .scan({ year: '2024', slug: 'hello-world' })
       .select('frontmatter.title', 'body.html')
       .single()
@@ -170,15 +168,15 @@ const QUERY_TEMPLATES: Record<string, (piq: ReturnType<typeof createPiq>) => Pro
 // Parse simple piq query code and execute it safely (no eval)
 function parseAndExecuteQuery(code: string, piq: ReturnType<typeof createPiq>): Promise<unknown> {
   // Extract the query chain from the code
-  // Supports: piq.from("posts").scan({...}).filter({...}).select(...).exec()
+  // Supports: piq.from(resolver).scan({...}).filter({...}).select(...).exec()
   
-  const fromMatch = code.match(/\.from\s*\(\s*["'](\w+)["']\s*\)/);
+  const fromMatch = code.match(/\.from\s*\(/);
   if (!fromMatch) {
-    throw new Error('Query must use piq.from("collection")');
+    throw new Error('Query must use piq.from(resolver)');
   }
   
-  const collection = fromMatch[1];
-  let builder = piq.from(collection);
+  // In the playground, resolver is ignored - we use sample posts data
+  let builder = piq.from(null);
   
   // Parse scan constraints
   const scanMatch = code.match(/\.scan\s*\(\s*\{([^}]*)\}\s*\)/);

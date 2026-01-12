@@ -3,7 +3,7 @@ export const prerender = true;
 
 import DocsLayout from "../../layouts/DocsLayout.astro";
 
-const codeDefineResolver = `<span class="syn-keyword">import</span> { piq, register } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
+const codeDefineResolver = `<span class="syn-keyword">import</span> { piq } <span class="syn-keyword">from</span> <span class="syn-string">'piqit'</span>
 <span class="syn-keyword">import</span> { fileMarkdown } <span class="syn-keyword">from</span> <span class="syn-string">'@piqit/resolvers'</span>
 <span class="syn-keyword">import</span> { z } <span class="syn-keyword">from</span> <span class="syn-string">'zod'</span>
 
@@ -16,12 +16,9 @@ const codeDefineResolver = `<span class="syn-keyword">import</span> { piq, regis
     tags: z.array(z.string()),
   }),
   body: { html: <span class="syn-keyword">true</span>, headings: <span class="syn-keyword">true</span> }
-})
+})`;
 
-<span class="syn-comment">// Register the resolver</span>
-register(<span class="syn-string">'posts'</span>, posts)`;
-
-const codeQuery = `<span class="syn-keyword">const</span> results = <span class="syn-keyword">await</span> piq.from(<span class="syn-string">'posts'</span>)
+const codeQuery = `<span class="syn-keyword">const</span> results = <span class="syn-keyword">await</span> piq.from(posts)
   .scan({ year: <span class="syn-string">'2024'</span> })
   .filter({ status: <span class="syn-string">'published'</span> })
   .select(<span class="syn-string">'params.slug'</span>, <span class="syn-string">'frontmatter.title'</span>, <span class="syn-string">'body.html'</span>)
@@ -51,7 +48,7 @@ const codeQuery = `<span class="syn-keyword">const</span> results = <span class=
 
   <h2>Quick Start</h2>
 
-  <p>Define a resolver for your content and register it:</p>
+  <p>Define a resolver for your content:</p>
 
   <pre set:html={codeDefineResolver} />
 

@@ -18,11 +18,11 @@
  * // worker.ts
  * import { posts } from "./generated/content";
  * import { staticContent } from "@piqit/resolvers";
- * import { register, piq } from "piqit";
+ * import { piq } from "piqit";
  *
- * register("posts", staticContent(posts));
+ * const postsResolver = staticContent(posts);
  *
- * const results = await piq.from("posts")
+ * const results = await piq.from(postsResolver)
  *   .filter({ author: "John" })
  *   .select("params.slug", "frontmatter.title")
  *   .exec();
@@ -165,13 +165,13 @@ function createPassthroughSchema<T>(): StandardSchema<T> {
  * // In your worker:
  * import { posts } from "./generated/content";
  * import { staticContent } from "@piqit/resolvers";
- * import { register, piq } from "piqit";
+ * import { piq } from "piqit";
  *
- * register("posts", staticContent(posts));
+ * const postsResolver = staticContent(posts);
  *
  * export default {
  *   async fetch(request: Request) {
- *     const results = await piq.from("posts")
+ *     const results = await piq.from(postsResolver)
  *       .scan({ year: "2024" })
  *       .select("params.slug", "frontmatter.title")
  *       .exec();

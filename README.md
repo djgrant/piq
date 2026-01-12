@@ -21,7 +21,7 @@ bun add piqit @piqit/resolvers
 ## Quick Start
 
 ```typescript
-import { fromResolver } from 'piqit'
+import { piq } from 'piqit'
 import { fileMarkdown } from '@piqit/resolvers'
 import { z } from 'zod'
 
@@ -38,7 +38,7 @@ const posts = fileMarkdown({
 })
 
 // Query for published posts from 2024
-const results = await fromResolver(posts)
+const results = await piq.from(posts)
   .scan({ year: '2024' })
   .filter({ status: 'published' })
   .select('params.slug', 'frontmatter.title', 'body.html')
@@ -67,7 +67,7 @@ const results = await fromResolver(posts)
 Queries follow a method chain that matches cost escalation:
 
 ```typescript
-fromResolver(posts)
+piq.from(posts)
   .scan({ year: '2024' })    // enumerate by pattern (cheap)
   .filter({ status: 'published' })  // narrow by criteria (costs I/O)
   .select('params.slug', 'frontmatter.title')  // what to read
@@ -80,13 +80,13 @@ Finds items by pattern. This is your cheapest operation—it works at the collec
 
 ```typescript
 // Find all posts from 2024
-fromResolver(posts).scan({ year: '2024' })
+piq.from(posts).scan({ year: '2024' })
 
 // Find a specific post
-fromResolver(posts).scan({ year: '2024', slug: 'hello-world' })
+piq.from(posts).scan({ year: '2024', slug: 'hello-world' })
 
 // Find all posts (empty constraints)
-fromResolver(posts).scan({})
+piq.from(posts).scan({})
 ```
 
 For filesystem resolvers, scan leverages path structure. Put high-cardinality, frequently-filtered fields in your path pattern.
@@ -97,7 +97,7 @@ Narrows results by document-level criteria. Requires reading frontmatter from ea
 
 ```typescript
 // Find published posts from 2024
-fromResolver(posts)
+piq.from(posts)
   .scan({ year: '2024' })
   .filter({ status: 'published' })
 ```
@@ -120,11 +120,11 @@ The select API uses dotted paths and produces **flat results**—the final segme
 Executes the query and returns all results as an array.
 
 ```typescript
-const posts = await fromResolver(resolver)
+const results = await piq.from(posts)
   .scan({ year: '2024' })
   .select('params.slug')
   .exec()
-// posts: Array<{ slug: string }>
+// results: Array<{ slug: string }>
 ```
 
 ### single()
@@ -133,14 +133,14 @@ Returns a builder for single-result queries.
 
 ```typescript
 // Returns first result or undefined
-const post = await fromResolver(resolver)
+const post = await piq.from(posts)
   .scan({ year: '2024', slug: 'hello-world' })
   .select('params.slug', 'frontmatter.title')
   .single()
   .exec()
 
 // Throws if no results
-const post = await fromResolver(resolver)
+const post = await piq.from(posts)
   .scan({ year: '2024', slug: 'hello-world' })
   .select('params.slug')
   .single()
@@ -152,7 +152,7 @@ const post = await fromResolver(resolver)
 For large result sets, stream results instead of loading all into memory:
 
 ```typescript
-for await (const post of fromResolver(posts).scan({}).select('params.slug').stream()) {
+for await (const post of piq.from(posts).scan({}).select('params.slug').stream()) {
   console.log(post.slug)
 }
 ```
@@ -294,35 +294,6 @@ interface Heading {
   depth: number   // 1-6
   text: string    // Heading text
   slug: string    // URL-safe slug
-}
-```
-
-## Using the Registry
-
-For apps with multiple collections, register resolvers by name:
-
-```typescript
-import { piq, register, fromResolver } from 'piqit'
-
-// Register resolvers
-register('posts', postsResolver)
-register('authors', authorsResolver)
-
-// Query by name
-const posts = await piq.from('posts')
-  .scan({ year: '2024' })
-  .select('params.slug')
-  .exec()
-```
-
-For type-safe registry access, extend the Registry interface:
-
-```typescript
-declare module 'piqit' {
-  interface Registry {
-    posts: typeof postsResolver
-    authors: typeof authorsResolver
-  }
 }
 ```
 
