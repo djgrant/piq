@@ -3,12 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run --hot src/server.ts"
+    "dev": "bun run --hot src/server.ts",
+    "build:content": "bun run scripts/build-content.ts",
+    "worker": "bun run src/worker.ts"
   },
   "dependencies": {
     "piqit": "workspace:*",
     "@piqit/resolvers": "workspace:*",
-    "zod": "^3.24.0"
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@types/bun": "latest"

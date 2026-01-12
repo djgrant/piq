@@ -1,18 +1,25 @@
 /**
  * @piqit/resolvers - Resolver implementations for piq v2
  *
- * Provides filesystem resolvers for querying structured content:
- * - fileMarkdown: Query markdown files with frontmatter
+ * Provides resolvers for querying structured content:
+ * - fileMarkdown: Query markdown files from filesystem (Node.js/Bun)
+ * - staticContent: Query pre-compiled content (Edge/Workers)
  *
  * @packageDocumentation
  */
 
 // =============================================================================
-// Main Resolver
+// Filesystem Resolver (Node.js/Bun only)
 // =============================================================================
 
 export { fileMarkdown } from "./file-markdown"
 export type { FileMarkdownOptions, FileMarkdownResult } from "./file-markdown"
+
+// =============================================================================
+// Static Content Resolver (Edge/Workers compatible)
+// =============================================================================
+
+export { staticContent, staticResolver } from "./static"
 
 // =============================================================================
 // Path Pattern Utilities

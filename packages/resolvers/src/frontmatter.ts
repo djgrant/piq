@@ -75,11 +75,18 @@ function parseSimpleYaml(yaml: string): Record<string, unknown> {
   let currentKey: string | null = null
   let currentValue: string[] = []
   let inMultiline = false
+  let inBlockArray = false
+  let blockArrayItems: unknown[] = []
   let multilineIndent = 0
 
   function commitValue() {
     if (currentKey) {
-      if (currentValue.length === 1) {
+      if (inBlockArray) {
+        // Commit block array
+        result[currentKey] = blockArrayItems
+        blockArrayItems = []
+        inBlockArray = false
+      } else if (currentValue.length === 1) {
         result[currentKey] = parseYamlValue(currentValue[0])
       } else if (currentValue.length > 1) {
         result[currentKey] = currentValue.join("\n")
@@ -91,6 +98,16 @@ function parseSimpleYaml(yaml: string): Record<string, unknown> {
   }
 
   for (const line of lines) {
+    // Check for block array item (- value)
+    const arrayItemMatch = line.match(/^(\s+)-\s+(.*)$/)
+    if (arrayItemMatch && currentKey && (inBlockArray || (inMultiline && currentValue.length === 0))) {
+      inBlockArray = true
+      inMultiline = false
+      const itemValue = arrayItemMatch[2].trim()
+      blockArrayItems.push(parseYamlValue(itemValue))
+      continue
+    }
+
     // Check for key: value pattern
     const keyMatch = line.match(/^([a-zA-Z_][a-zA-Z0-9_-]*)\s*:\s*(.*)$/)
 
@@ -102,13 +119,13 @@ function parseSimpleYaml(yaml: string): Record<string, unknown> {
       const valueStr = keyMatch[2].trim()
 
       if (valueStr === "" || valueStr === "|" || valueStr === ">") {
-        // Multiline value starts on next line
+        // Multiline value or block array starts on next line
         inMultiline = true
         multilineIndent = 0
       } else {
         currentValue = [valueStr]
       }
-    } else if (inMultiline && currentKey) {
+    } else if (inMultiline && currentKey && !inBlockArray) {
       // Continuation of multiline value
       if (line.trim() === "") {
         currentValue.push("")
