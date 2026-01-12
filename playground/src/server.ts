@@ -392,6 +392,11 @@ export default async function() {
             resolver: unknown
           ): QueryBuilder<TParams, TFrontmatter, TBody>;
         }
+
+        declare module "./resolvers" {
+          export const posts: unknown;
+          export const workPackages: unknown;
+        }
       \`;
 
       monaco.languages.typescript.typescriptDefaults.addExtraLib(piqTypes, 'node_modules/piqit/index.d.ts');
