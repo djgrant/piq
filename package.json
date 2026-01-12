@@ -3,13 +3,15 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "workspaces": ["packages/*", "playground"],
+  "workspaces": ["packages/*", "playground", "website"],
   "scripts": {
     "build": "bun run --filter '*' build",
     "test": "bun test",
     "check": "bun run --filter '*' check",
     "clean": "rm -rf packages/*/dist",
-    "playground": "bun run --cwd playground dev"
+    "playground": "bun run --cwd playground dev",
+    "website": "pnpm --filter piq-website dev",
+    "web": "pnpm --filter piq-website --"
   },
   "devDependencies": {
     "@types/bun": "latest",
