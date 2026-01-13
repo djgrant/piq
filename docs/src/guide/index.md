@@ -62,5 +62,5 @@ Each step has a cost, and the API makes that cost visible.
 - **select()** — Declare which fields to return. Controls what gets parsed.
 - **exec()** — Execute and return results as an array.
 
-Read [Concepts](/docs/concepts) to understand the cost model, or jump to the
-[API Reference](/docs/api) for full details.
+Read [Concepts](/guide/concepts) to understand the cost model, or jump to the
+[API Reference](/reference/api) for full details.

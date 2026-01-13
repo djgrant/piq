@@ -2,7 +2,6 @@
 export const prerender = true;
 
 import Layout from "../layouts/Layout.astro";
-import Header from "../components/Header.astro";
 
 const defaultQuery = `// Query the posts collection
 import { piq } from 'piqit'
@@ -44,7 +43,12 @@ const sampleFilesJson = JSON.stringify(sampleFiles);
 ---
 
 <Layout title="Playground — piq">
-  <Header currentPath="/playground" fullWidth={true} />
+  <!-- Back link -->
+  <div class="h-10 flex items-center px-4 border-b border-[var(--color-border)] dark:border-[var(--color-border-dark)] bg-[var(--color-bg)] dark:bg-[var(--color-bg-dark)]">
+    <a href="/" class="text-sm text-[var(--color-muted)] dark:text-[var(--color-muted-dark)] hover:text-[var(--color-text)] dark:hover:text-[var(--color-text-dark)] transition-colors">
+      &larr; Back to piq
+    </a>
+  </div>
   
   <!-- Mobile notice -->
   <div
@@ -84,7 +88,7 @@ const sampleFilesJson = JSON.stringify(sampleFiles);
     </div>
   </div>
 
-  <div class="h-[calc(100vh-4rem)] flex flex-col">
+  <div class="h-[calc(100vh-2.5rem)] flex flex-col">
     <!-- Main area with sidebar -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Sidebar - hidden on mobile -->
