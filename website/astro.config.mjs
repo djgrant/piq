@@ -15,15 +15,15 @@ export default defineConfig({
         {
           label: 'Guide',
           items: [
-            { label: 'Getting Started', slug: 'index' },
-            { label: 'Concepts', slug: 'concepts' },
+            { label: 'Getting Started', slug: 'docs' },
+            { label: 'Concepts', slug: 'docs/concepts' },
           ],
         },
         {
           label: 'Reference',
           items: [
-            { label: 'API', slug: 'api' },
-            { label: 'Resolvers', slug: 'resolvers' },
+            { label: 'API', slug: 'docs/api' },
+            { label: 'Resolvers', slug: 'docs/resolvers' },
           ],
         },
       ],
