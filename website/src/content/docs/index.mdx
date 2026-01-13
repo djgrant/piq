@@ -1,0 +1,66 @@
+---
+title: Getting Started
+description: Get started with piq, a query layer for document collections
+---
+
+# Getting Started
+
+piq is a query layer for document collections. It's designed for content-heavy applications
+where you're reading structured sources (markdown, JSON, S3 etc.) and want explicit control over
+resolution cost.
+
+## Installation
+
+```bash
+npm install piqit @piqit/resolvers
+```
+
+`piqit` is the core query builder. `@piqit/resolvers` provides
+resolvers for common content sources like markdown files.
+
+## Quick Start
+
+Define a resolver for your content:
+
+```typescript
+import { piq } from 'piqit'
+import { fileMarkdown } from '@piqit/resolvers'
+import { z } from 'zod'
+
+const posts = fileMarkdown({
+  base: 'content/posts',
+  path: '{year}/{slug}.md',
+  frontmatter: z.object({
+    title: z.string(),
+    status: z.enum(['draft', 'published']),
+    tags: z.array(z.string()),
+  }),
+  body: { html: true, headings: true }
+})
+```
+
+Query your content:
+
+```typescript
+const results = await piq.from(posts)
+  .scan({ year: '2024' })
+  .filter({ status: 'published' })
+  .select('params.slug', 'frontmatter.title', 'body.html')
+  .exec()
+
+// Results are flat:
+// [{ slug: 'hello-world', title: 'Hello World', html: '<p>...' }]
+```
+
+## The Query Pipeline
+
+Every piq query follows the same pattern: **scan -> filter -> select -> exec**.
+Each step has a cost, and the API makes that cost visible.
+
+- **scan()** — Enumerate items by path pattern. Cheapest operation.
+- **filter()** — Narrow by document content. Requires reading frontmatter.
+- **select()** — Declare which fields to return. Controls what gets parsed.
+- **exec()** — Execute and return results as an array.
+
+Read [Concepts](/docs/concepts) to understand the cost model, or jump to the
+[API Reference](/docs/api) for full details.

@@ -1,5 +1,7 @@
 # piq
 
+[![Experimental](https://img.shields.io/badge/status-experimental-orange.svg)](https://github.com/anomalyco/ai)
+
 A document-based, cost-aware query interface for TypeScript.
 
 ## What is piq?
