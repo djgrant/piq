@@ -17,7 +17,7 @@ A document-based, cost-aware query interface for TypeScript.
 ## Installation
 
 ```bash
-bun add piqit @piqit/resolvers
+npm install piqit @piqit/resolvers
 ```
 
 ## Quick Start
@@ -296,6 +296,57 @@ interface Heading {
   depth: number   // 1-6
   text: string    // Heading text
   slug: string    // URL-safe slug
+}
+```
+
+## Edge / Worker Environments
+
+For environments without filesystem access (Cloudflare Workers, etc.), use the `staticContent` resolver with pre-compiled content.
+
+### Entry Points
+
+- `@piqit/resolvers` — Full package (includes `fileMarkdown` and `staticContent`)
+- `@piqit/resolvers/edge` — Edge-only (only `staticContent`, no Node.js dependencies)
+
+### Build Step
+
+Compile content at build time:
+
+```typescript
+import { fileMarkdown } from '@piqit/resolvers'
+import { piq } from 'piqit'
+
+const posts = fileMarkdown({ base: 'content/posts', path: '{year}/{slug}.md', ... })
+
+const allPosts = await piq.from(posts)
+  .scan({})
+  .select('params.*', 'frontmatter.*', 'body.*')
+  .exec()
+
+await Bun.write(
+  'src/generated/content.ts',
+  `export const posts = ${JSON.stringify(allPosts)};`
+)
+```
+
+### Worker Usage
+
+```typescript
+import { posts } from './generated/content'
+import { staticContent } from '@piqit/resolvers/edge'
+import { piq } from 'piqit'
+
+const postsResolver = staticContent(posts)
+
+export default {
+  async fetch(request: Request) {
+    const results = await piq.from(postsResolver)
+      .scan({ year: '2024' })
+      .select('params.slug', 'frontmatter.title')
+      .exec()
+
+    return Response.json(results)
+  }
 }
 ```
 

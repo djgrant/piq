@@ -88,6 +88,58 @@ interface Heading {
 }
 ```
 
+### staticContent
+
+A resolver for edge environments like Cloudflare Workers where filesystem access is not available. Content is compiled at build time and bundled as a static module.
+
+```typescript
+import { staticContent } from '@piqit/resolvers'
+// or for edge-only bundles:
+import { staticContent } from '@piqit/resolvers/edge'
+```
+
+#### Build Step
+
+Compile your content at build time:
+
+```typescript
+import { fileMarkdown } from '@piqit/resolvers'
+import { piq } from 'piqit'
+
+const posts = fileMarkdown({ base: 'content/posts', path: '{year}/{slug}.md', ... })
+
+const allPosts = await piq.from(posts)
+  .scan({})
+  .select('params.*', 'frontmatter.*', 'body.*')
+  .exec()
+
+await Bun.write(
+  'src/generated/content.ts',
+  `export const posts = ${JSON.stringify(allPosts)};`
+)
+```
+
+#### Worker Usage
+
+```typescript
+import { posts } from './generated/content'
+import { staticContent } from '@piqit/resolvers/edge'
+import { piq } from 'piqit'
+
+const postsResolver = staticContent(posts)
+
+export default {
+  async fetch(request: Request) {
+    const results = await piq.from(postsResolver)
+      .scan({ year: '2024' })
+      .select('params.slug', 'frontmatter.title')
+      .exec()
+
+    return Response.json(results)
+  }
+}
+```
+
 ## Writing Custom Resolvers
 
 Resolvers implement the `Resolver` interface. A resolver must define schemas 
@@ -98,14 +150,15 @@ method that executes queries.
 import type { Resolver, QuerySpec } from 'piqit'
 
 const myResolver: Resolver<ScanSchema, FilterSchema, ResultSchema> = {
-  scan: scanSchema,
-  filter: filterSchema,
-  result: resultSchema,
+  schema: {
+    scanParams: scanSchema,
+    filterParams: filterSchema,
+    result: resultSchema,
+  },
   
   async resolve(spec: QuerySpec) {
-    // Implement query logic
     // spec.scan - scan constraints
-    // spec.filter - filter constraints
+    // spec.filter - filter constraints  
     // spec.select - fields to return
     return results
   }

@@ -27,11 +27,11 @@ The query harvests structure created at write time.
 
 ```typescript
 // Good: year in path, filterable without I/O
-fileMarkdown({ path: '{year}/{slug}.md' })
-piq.from('posts').scan({ year: '2024' })  // Fast - just glob pattern
+const posts = fileMarkdown({ base: 'content/posts', path: '{year}/{slug}.md', ... })
+piq.from(posts).scan({ year: '2024' })  // Fast - just glob pattern
 
 // Less efficient: year only in frontmatter
-piq.from('posts').scan({}).filter({ year: '2024' })  // Must read every file
+piq.from(posts).scan({}).filter({ year: '2024' })  // Must read every file
 ```
 
 Put high-cardinality, frequently-filtered fields in your path pattern where enumeration 
