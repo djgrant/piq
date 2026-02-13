@@ -27,7 +27,7 @@ cp -r website/dist/* dist/
 
 # Copy VitePress output to /docs/
 mkdir -p dist/docs
-cp -r docs/src/.vitepress/dist/* dist/docs/
+cp -r docs/.vitepress/dist/* dist/docs/
 
 # Create _routes.json for Cloudflare Pages
 cat > dist/_routes.json << 'ROUTES'
