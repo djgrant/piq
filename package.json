@@ -3,7 +3,12 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "workspaces": ["packages/*", "playground", "website", "docs"],
+  "workspaces": [
+    "packages/*",
+    "playground",
+    "website",
+    "docs"
+  ],
   "scripts": {
     "dev": "concurrently -n astro,vitepress -c blue,green \"pnpm dev:website\" \"pnpm dev:docs\"",
     "dev:website": "cd website && pnpm dev",
@@ -14,10 +19,15 @@
     "test": "bun test",
     "check": "bun run --filter '*' check",
     "clean": "rm -rf packages/*/dist dist",
-    "playground": "bun run --cwd playground dev"
+    "playground": "bun run --cwd playground dev",
+    "workspace-piq": "pok"
   },
   "devDependencies": {
+    "@pokit/core": "^0.0.42",
+    "@pokit/prompter-clack": "^0.0.42",
+    "@pokit/reporter-clack": "^0.0.42",
     "@types/bun": "latest",
+    "bumpp": "^10.3.2",
     "concurrently": "^9.1.2",
     "typescript": "^5.8.3",
     "zod": "^4.3.5"
