@@ -26,6 +26,7 @@
     "@pokit/core": "^0.0.42",
     "@pokit/prompter-clack": "^0.0.42",
     "@pokit/reporter-clack": "^0.0.42",
+    "@pokit/tabs-ink": "^0.0.42",
     "@types/bun": "latest",
     "bumpp": "^10.3.2",
     "concurrently": "^9.1.2",
