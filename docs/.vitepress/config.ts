@@ -7,11 +7,12 @@ export default defineConfig({
 
   themeConfig: {
     siteTitle: 'piq',
-    
+
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/' },
       { text: 'Reference', link: '/reference/api' },
+      { text: 'Packages', link: '/packages/' },
       { text: 'Playground', link: '/playground' },
     ],
 
@@ -22,6 +23,7 @@ export default defineConfig({
           items: [
             { text: 'Getting Started', link: '/guide/' },
             { text: 'Concepts', link: '/guide/concepts' },
+            { text: 'Recipes', link: '/guide/recipes' },
           ],
         },
         {
@@ -29,6 +31,15 @@ export default defineConfig({
           items: [
             { text: 'API', link: '/reference/api' },
             { text: 'Resolvers', link: '/reference/resolvers' },
+            { text: 'Resolver Types', link: '/reference/types' },
+          ],
+        },
+        {
+          text: 'Packages',
+          items: [
+            { text: 'Overview', link: '/packages/' },
+            { text: 'piqit', link: '/packages/piqit' },
+            { text: '@piqit/resolvers', link: '/packages/resolvers' },
           ],
         },
       ],

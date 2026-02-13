@@ -1,66 +1,97 @@
 ---
 title: Getting Started
-description: Get started with piq, a query layer for document collections
+description: Install piq and run your first query
 ---
 
 # Getting Started
 
-piq is a query layer for document collections. It's designed for content-heavy applications
-where you're reading structured sources (markdown, JSON, S3 etc.) and want explicit control over
-resolution cost.
+This guide gets you from install to a working query.
 
-## Installation
+## Install
 
 ```bash
-npm install piqit @piqit/resolvers
+npm install piqit @piqit/resolvers zod
 ```
 
-`piqit` is the core query builder. `@piqit/resolvers` provides
-resolvers for common content sources like markdown files.
+`piqit` is the core fluent query API.
+`@piqit/resolvers` provides resolver implementations such as `fileMarkdown` and `staticContent`.
 
-## Quick Start
-
-Define a resolver for your content:
+## First Resolver
 
 ```typescript
-import { piq } from 'piqit'
 import { fileMarkdown } from '@piqit/resolvers'
 import { z } from 'zod'
 
-const posts = fileMarkdown({
+export const posts = fileMarkdown({
   base: 'content/posts',
   path: '{year}/{slug}.md',
   frontmatter: z.object({
     title: z.string(),
     status: z.enum(['draft', 'published']),
-    tags: z.array(z.string()),
+    tags: z.array(z.string()).default([]),
   }),
-  body: { html: true, headings: true }
+  body: { html: true, headings: true },
 })
 ```
 
-Query your content:
+### Option Details
+
+- `base`: base directory for content files.
+- `path`: path pattern used for scan constraints and `params.*` extraction.
+- `frontmatter`: StandardSchema-compatible schema (Zod works out of the box).
+- `body`: optional. Enable `raw`, `html`, and/or `headings`.
+
+## First Query
 
 ```typescript
-const results = await piq.from(posts)
+import { piq } from 'piqit'
+import { posts } from './posts-resolver'
+
+const results = await piq
+  .from(posts)
   .scan({ year: '2024' })
   .filter({ status: 'published' })
   .select('params.slug', 'frontmatter.title', 'body.html')
   .exec()
 
-// Results are flat:
-// [{ slug: 'hello-world', title: 'Hello World', html: '<p>...' }]
+// [{ slug: 'hello-world', title: 'Hello World', html: '<h1>...</h1>' }]
 ```
 
-## The Query Pipeline
+Results are flat. The last path segment becomes the key (`params.slug` -> `slug`).
 
-Every piq query follows the same pattern: **scan -> filter -> select -> exec**.
-Each step has a cost, and the API makes that cost visible.
+## Query Steps
 
-- **scan()** — Enumerate items by path pattern. Cheapest operation.
-- **filter()** — Narrow by document content. Requires reading frontmatter.
-- **select()** — Declare which fields to return. Controls what gets parsed.
-- **exec()** — Execute and return results as an array.
+- `scan()` narrows by path params (cheap).
+- `filter()` narrows by frontmatter fields (reads metadata).
+- `select()` declares returned fields and required resolver work.
+- `exec()` runs query and returns all rows.
 
-Read [Concepts](/guide/concepts) to understand the cost model, or jump to the
-[API Reference](/reference/api) for full details.
+## Common Variants
+
+```typescript
+// Alias output keys
+.select({
+  postSlug: 'params.slug',
+  postTitle: 'frontmatter.title',
+})
+
+// Stream API (currently resolves full result set first, then yields)
+for await (const row of piq.from(posts).scan({}).select('params.slug').stream()) {
+  console.log(row.slug)
+}
+
+// Single result helpers
+const maybePost = await piq
+  .from(posts)
+  .scan({ year: '2024', slug: 'hello-world' })
+  .select('params.slug', 'frontmatter.title')
+  .single()
+  .exec()
+```
+
+## What To Read Next
+
+- [Concepts](/guide/concepts)
+- [API Reference](/reference/api)
+- [Resolver Reference](/reference/resolvers)
+- [Packages](/packages/)

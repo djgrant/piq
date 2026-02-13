@@ -20,6 +20,43 @@ A document-based, cost-aware query interface for TypeScript.
 npm install piqit @piqit/resolvers
 ```
 
+## Documentation
+
+The docs are organized into three sections that match the docs site structure.
+
+### Guide
+
+- [Getting Started](docs/guide/index.md)
+- [Concepts](docs/guide/concepts.md)
+- [Recipes](docs/guide/recipes.md)
+
+### Reference
+
+- [API Reference](docs/reference/api.md)
+- [Resolvers](docs/reference/resolvers.md)
+- [Resolver Types](docs/reference/types.md)
+
+### Packages
+
+- [Packages Overview](docs/packages/index.md)
+- [`piqit`](docs/packages/piqit.md)
+- [`@piqit/resolvers`](docs/packages/resolvers.md)
+
+## Packages
+
+This repo ships two published packages:
+
+| Package | Purpose | Entry points |
+| --- | --- | --- |
+| `piqit` | Core fluent query builder, select typing, and flattening utilities | `piqit` |
+| `@piqit/resolvers` | Resolver implementations and content parsing helpers | `@piqit/resolvers`, `@piqit/resolvers/edge`, `@piqit/resolvers/static` |
+
+Workspace apps (not published packages):
+
+- `docs` - VitePress documentation
+- `playground` - Bun playground and examples
+- `website` - Astro site surface
+
 ## Quick Start
 
 ```typescript

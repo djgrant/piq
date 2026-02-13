@@ -1,169 +1,102 @@
 ---
 title: Resolvers
-description: How to use and create resolvers for piq
+description: Resolver APIs, behavior, and implementation contract
 ---
 
 # Resolvers
 
-Resolvers define how piq reads and parses content. The core package provides the query 
-builder; resolver packages provide the data sources.
+Resolvers define how `piq` fetches and shapes namespaced query data.
 
-## @piqit/resolvers
+## Package
 
 ```bash
 npm install @piqit/resolvers
 ```
 
-### fileMarkdown
+## `fileMarkdown(options)`
 
-The primary resolver for markdown content with YAML frontmatter.
+Filesystem resolver for markdown documents with YAML frontmatter.
 
 ```typescript
 import { fileMarkdown } from '@piqit/resolvers'
 import { z } from 'zod'
 
 const posts = fileMarkdown({
-  // Base directory for finding files
   base: 'content/posts',
-  
-  // Path pattern with {param} placeholders
   path: '{year}/{slug}.md',
-  
-  // Schema for frontmatter (any StandardSchema-compatible library)
   frontmatter: z.object({
     title: z.string(),
     status: z.enum(['draft', 'published']),
-    tags: z.array(z.string()).default([]),
+    tags: z.array(z.string()),
   }),
-  
-  // Body parsing options
-  body: {
-    raw: true,      // Include raw markdown
-    html: true,     // Include HTML conversion
-    headings: true  // Extract headings with slugs
-  }
+  body: { raw: true, html: true, headings: true },
 })
 ```
 
-### Path Patterns
+### Options
 
-Path patterns use `{param}` syntax to define URL-style segments:
+- `base: string`
+- `path: string` with `{param}` placeholders
+- `frontmatter: StandardSchema`
+- `body?: { raw?: boolean; html?: boolean; headings?: boolean }`
+
+### Query Behavior
+
+- `scan` maps to path params derived from `path`.
+- `filter` checks frontmatter values by strict equality.
+- Resolver reads only data needed for selected namespaces:
+- `params.*` does not require file content reads.
+- `frontmatter.*` reads and parses frontmatter.
+- `body.*` parses body according to requested fields.
+
+### Runtime
+
+`fileMarkdown` currently uses Bun APIs (`Bun.Glob`, `Bun.file`) and is intended for Bun environments.
+
+## `staticContent(data)`
+
+Static-data resolver for edge runtimes.
 
 ```typescript
-'{year}/{slug}.md'            // Matches: 2024/hello-world.md
-'{category}/{year}/{slug}.md' // Matches: tech/2024/my-post.md
+import { staticContent } from '@piqit/resolvers/edge'
+
+const postsResolver = staticContent(postsArray)
 ```
 
-Parameters extracted from the path are available as `params.*` in select.
+### Behavior
 
-### StandardSchema
+- `scan` filters `params` by equality.
+- `filter` filters `frontmatter` by equality.
+- `select` returns only selected namespaces/fields.
+- Works without filesystem access.
 
-Frontmatter schemas use [StandardSchema](https://github.com/standard-schema/standard-schema), 
-compatible with:
+### Alias
 
-- Zod
-- Valibot
-- ArkType
-- Any library implementing the standard
+`staticResolver` is an alias of `staticContent`.
 
-### Body Options
-
-Control what gets parsed from the markdown body:
+## Edge Entry
 
 ```typescript
-body: {
-  raw: true,      // string - original markdown
-  html: true,     // string - converted to HTML
-  headings: true  // Heading[] - extracted heading structure
-}
-```
-
-The `Heading` type:
-
-```typescript
-interface Heading {
-  depth: number   // 1-6
-  text: string    // Heading text
-  slug: string    // URL-safe slug
-}
-```
-
-### staticContent
-
-A resolver for edge environments like Cloudflare Workers where filesystem access is not available. Content is compiled at build time and bundled as a static module.
-
-```typescript
-import { staticContent } from '@piqit/resolvers'
-// or for edge-only bundles:
 import { staticContent } from '@piqit/resolvers/edge'
 ```
 
-#### Build Step
+The edge entry exports only edge-safe APIs (`staticContent`, `staticResolver`).
 
-Compile your content at build time:
+## Utility Exports
 
-```typescript
-import { fileMarkdown } from '@piqit/resolvers'
-import { piq } from 'piqit'
+`@piqit/resolvers` also exports utility helpers:
 
-const posts = fileMarkdown({ base: 'content/posts', path: '{year}/{slug}.md', ... })
+- Path pattern: `compilePattern`, `createParamsSchema`
+- Frontmatter: `parseFrontmatter`, `readFrontmatter`, `readFrontmatterWithOffset`
+- Markdown: `parseMarkdownBody`, `extractHeadings`, `slugify`, `markdownToHtml`
 
-const allPosts = await piq.from(posts)
-  .scan({})
-  .select('params.*', 'frontmatter.*', 'body.*')
-  .exec()
+## Resolver Contract Summary
 
-await Bun.write(
-  'src/generated/content.ts',
-  `export const posts = ${JSON.stringify(allPosts)};`
-)
-```
+A resolver must expose:
 
-#### Worker Usage
+- `schema.scanParams`
+- `schema.filterParams`
+- `schema.result`
+- `resolve(spec)` returning namespaced partial rows
 
-```typescript
-import { posts } from './generated/content'
-import { staticContent } from '@piqit/resolvers/edge'
-import { piq } from 'piqit'
-
-const postsResolver = staticContent(posts)
-
-export default {
-  async fetch(request: Request) {
-    const results = await piq.from(postsResolver)
-      .scan({ year: '2024' })
-      .select('params.slug', 'frontmatter.title')
-      .exec()
-
-    return Response.json(results)
-  }
-}
-```
-
-## Writing Custom Resolvers
-
-Resolvers implement the `Resolver` interface. A resolver must define schemas 
-for scan parameters, filter parameters, and the result shape, plus a `resolve()` 
-method that executes queries.
-
-```typescript
-import type { Resolver, QuerySpec } from 'piqit'
-
-const myResolver: Resolver<ScanSchema, FilterSchema, ResultSchema> = {
-  schema: {
-    scanParams: scanSchema,
-    filterParams: filterSchema,
-    result: resultSchema,
-  },
-  
-  async resolve(spec: QuerySpec) {
-    // spec.scan - scan constraints
-    // spec.filter - filter constraints  
-    // spec.select - fields to return
-    return results
-  }
-}
-```
-
-See the [source code](https://github.com/djgrant/piq) for 
-`fileMarkdown` as a reference implementation.
+See [Resolver Types](/reference/types) for the generic interface.

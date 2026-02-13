@@ -1,99 +1,86 @@
 ---
 title: Concepts
-description: Core concepts and design principles behind piq
+description: Core concepts and design tradeoffs in piq
 ---
 
 # Concepts
 
-piq's design is built around a few core ideas. Understanding these will help you 
-get the most out of the library.
+`piq` keeps resolution cost explicit and pushes data-layout decisions to the model you define.
 
-## Cost-Awareness
+## Cost Model
 
-The API makes resolution cost visible. The layers aren't implementation detail—they're 
-the API contract.
+The API is intentionally layered:
 
-When you call `.scan()`, you're doing path enumeration. It's cheap—no file 
-contents are read. When you call `.filter()`, you're reading frontmatter from 
-each file that passed the scan. When you `.select()` body fields, you're 
-parsing markdown.
+1. `scan()`
+2. `filter()`
+3. `select()`
+4. `exec()` or `stream()`
 
-This is explicit by design. You know what you're paying for.
+Each phase can increase work. You can reason about cost from the chain itself.
 
-## Design Patterns Upfront
+## Path-Driven Access Patterns
 
-Like DynamoDB, piq rewards designing your access patterns into your data structure. 
-The query harvests structure created at write time.
+Path patterns are the first index.
 
 ```typescript
-// Good: year in path, filterable without I/O
-const posts = fileMarkdown({ base: 'content/posts', path: '{year}/{slug}.md', ... })
-piq.from(posts).scan({ year: '2024' })  // Fast - just glob pattern
+// Better for year-based access
+path: '{year}/{slug}.md'
 
-// Less efficient: year only in frontmatter
-piq.from(posts).scan({}).filter({ year: '2024' })  // Must read every file
+// Then queries can stay in scan
+.scan({ year: '2024' })
 ```
 
-Put high-cardinality, frequently-filtered fields in your path pattern where enumeration 
-can extract them for free.
+If you keep frequently-filtered data only in frontmatter, you pay the filter cost for larger candidate sets.
 
 ## Flat Results
 
-Select uses dotted paths, but results are flat. The final segment of each path becomes 
-the property name:
+Select paths are namespaced (`params.slug`, `frontmatter.title`), but output is flattened by final segment.
 
 ```typescript
-.select('params.slug', 'frontmatter.title', 'body.html')
-// Result: { slug: string; title: string; html: string }
+.select('params.slug', 'frontmatter.title')
+// { slug, title }
 ```
 
-If you need custom names or have collisions, use the object form:
+If final segments collide, TypeScript fails the select at compile time.
 
 ```typescript
-.select({
-  postSlug: 'params.slug',
-  postTitle: 'frontmatter.title'
-})
-// Result: { postSlug: string; postTitle: string }
-```
-
-## Relationships
-
-piq doesn't do joins. Relationships are your responsibility.
-
-Fetching a post then its author is one waterfall—acceptable:
-
-```typescript
-const post = await getPost(slug)
-const author = await getAuthor(post.authorId)
-```
-
-Fetching 100 posts then 100 separate author queries is N+1—restructure or batch:
-
-```typescript
-// Bad: N+1
-for (const post of posts) {
-  const author = await getAuthor(post.authorId)
-}
-
-// Better: batch fetch authors
-const authorIds = posts.map(p => p.authorId)
-const authors = await getAuthors(authorIds)
-```
-
-## Type Safety
-
-Invalid queries are type errors, not runtime surprises. TypeScript catches:
-
-- Selecting fields that don't exist
-- Filtering on non-existent frontmatter properties
-- Scanning with invalid path parameters
-- Collision detection when two paths have the same final segment
-
-```typescript
-// ERROR: 'title' appears in both paths
+// compile-time error
 .select('params.title', 'frontmatter.title')
 
-// FIX: use object form to alias
-.select({ paramTitle: 'params.title', fmTitle: 'frontmatter.title' })
+// fix via aliases
+.select({
+  routeTitle: 'params.title',
+  postTitle: 'frontmatter.title',
+})
 ```
+
+## Explicit Over Magic
+
+`piq` does not do joins or relational planning.
+
+- One waterfall: usually acceptable.
+- N+1 waterfall: usually a design smell.
+
+The resolver gets a fully explicit query spec and decides how to satisfy it.
+
+## Schema Boundary
+
+Resolvers expose three schemas:
+
+- `scanParams`
+- `filterParams`
+- `result`
+
+`piq` uses those to type query methods and select paths.
+
+## Current Behavioral Notes
+
+- `select()` is required before `exec()`. Missing select throws at runtime.
+- Repeated `scan()` or `filter()` calls merge constraints; later values win for overlapping keys.
+- `single().exec()` returns first row or `undefined`.
+- `single().execOrThrow()` throws if zero rows are returned.
+
+## Runtime Positioning
+
+- Use `fileMarkdown` in Bun-based server/build contexts.
+- Use `staticContent` for edge runtimes where filesystem access is not available.
