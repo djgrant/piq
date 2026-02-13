@@ -1,12 +1,10 @@
 # Cloudflare Pages configuration for piq.dev
-# 
+#
 # This project combines:
 # - VitePress (static docs at /, /guide/*, /reference/*)
 # - Astro (prerendered /playground, SSR /api/*)
 
-name = "piq"
+name = "piq-website"
 compatibility_date = "2024-01-01"
 
-# Pages-specific settings
-[site]
-bucket = "./dist"
+pages_build_output_dir = "./dist"

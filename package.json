@@ -10,17 +10,11 @@
     "docs"
   ],
   "scripts": {
-    "dev": "concurrently -n astro,vitepress -c blue,green \"pnpm dev:website\" \"pnpm dev:docs\"",
-    "dev:website": "cd website && pnpm dev",
-    "dev:docs": "cd docs && pnpm dev -- --port 5174",
     "build": "bun run --filter '*' build",
     "build:site": "./scripts/build.sh",
-    "deploy": "./scripts/build.sh && npx wrangler pages deploy dist --project-name=piq",
     "test": "bun test",
     "check": "bun run --filter '*' check",
-    "clean": "rm -rf packages/*/dist dist",
-    "playground": "bun run --cwd playground dev",
-    "workspace-piq": "pok"
+    "clean": "rm -rf packages/*/dist dist"
   },
   "devDependencies": {
     "@pokit/core": "^0.0.42",
@@ -34,6 +28,7 @@
     "zod": "^4.3.5"
   },
   "dependencies": {
+    "wrangler": "^4.50.0",
     "yaml": "^2.8.2"
   }
 }
