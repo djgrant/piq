@@ -1,6 +1,6 @@
 {
   "name": "piqit",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "license": "MIT",
   "exports": {
@@ -11,8 +11,8 @@
   },
   "files": ["src", "dist"],
   "scripts": {
-    "check": "tsc --noEmit",
-    "build": "tsc"
+    "check": "pok packages core check",
+    "build": "pok packages core build"
   },
   "devDependencies": {
     "@piqit/resolvers": "workspace:*",
