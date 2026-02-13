@@ -3,12 +3,6 @@
   "type": "module",
   "version": "0.1.0",
   "description": "Documentation and playground for piq",
-  "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "push": "pnpm build && npx wrangler pages deploy dist --project-name=piq-website"
-  },
   "dependencies": {
     "@astrojs/cloudflare": "^12.0.1",
     "@tailwindcss/vite": "^4.1.18",

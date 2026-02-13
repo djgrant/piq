@@ -5,7 +5,7 @@
  * filesystem access is not available.
  *
  * Build process:
- * 1. Run `bun run scripts/build-content.ts` to compile content
+ * 1. Run `pok playground build-content` to compile content
  * 2. Bundle this worker with your bundler (wrangler, esbuild, etc.)
  * 3. Deploy to Cloudflare Workers
  */

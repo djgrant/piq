@@ -10,10 +10,6 @@
     }
   },
   "files": ["src", "dist"],
-  "scripts": {
-    "check": "pok packages core check",
-    "build": "pok packages core build"
-  },
   "devDependencies": {
     "@piqit/resolvers": "workspace:*",
     "@types/bun": "latest",

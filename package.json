@@ -9,13 +9,6 @@
     "website",
     "docs"
   ],
-  "scripts": {
-    "build": "bun run --filter '*' build",
-    "build:site": "./scripts/build.sh",
-    "test": "bun test",
-    "check": "bun run --filter '*' check",
-    "clean": "rm -rf packages/*/dist dist"
-  },
   "devDependencies": {
     "@pokit/core": "^0.0.42",
     "@pokit/prompter-clack": "^0.0.42",

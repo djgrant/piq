@@ -2,11 +2,6 @@
   "name": "piq-playground",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "bun run --hot src/server.ts",
-    "build:content": "bun run scripts/build-content.ts",
-    "worker": "bun run src/worker.ts"
-  },
   "dependencies": {
     "piqit": "workspace:*",
     "@piqit/resolvers": "workspace:*",

@@ -19,7 +19,7 @@ piq.dev
 2. **Astro** builds with `output: 'server'` to `website/dist/`:
    - Prerendered pages (like `/playground`) become static HTML
    - SSR routes (like `/api/*`) are bundled into `_worker.js`
-3. **Build script** (`scripts/build.sh`) merges both outputs:
+3. **Build command** (`commands/site.build.ts`) merges both outputs:
    - VitePress output forms the base of `dist/`
    - Astro's `/playground` is copied into `dist/playground/`
    - Astro's `_worker.js` handles the `/api/*` routes
@@ -43,14 +43,14 @@ The `_routes.json` file tells Cloudflare which routes go to the worker:
 
 ```bash
 # Build both sites and merge
-pnpm build:site
+pok site build
 
 # Build and deploy to Cloudflare Pages
-pnpm deploy
+pok deploy
 
 # Development (run separately)
-pnpm docs      # VitePress dev server at localhost:5173
-pnpm website   # Astro dev server at localhost:4321
+pok docs dev      # VitePress dev server at localhost:5173
+pok website dev   # Astro dev server at localhost:4321
 ```
 
 ## Project Structure
@@ -70,8 +70,8 @@ piq/
 │           ├── playground.astro  # Prerendered (export const prerender = true)
 │           └── api/
 │               └── query.ts      # SSR endpoint (export const prerender = false)
-├── scripts/
-│   └── build.sh             # Unified build script
+├── commands/
+│   └── site.build.ts        # Unified site build command
 ├── wrangler.toml            # Cloudflare config
 └── dist/                    # Combined output (gitignored)
 ```
@@ -89,7 +89,7 @@ piq/
 
 3. Deploy:
    ```bash
-   pnpm deploy
+   pok deploy
    ```
 
 ## Troubleshooting

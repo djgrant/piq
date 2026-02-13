@@ -5,9 +5,9 @@ export const command = defineCommand({
   run: async (r) => {
     await r.tabs(
       [
-        r.exec("astro dev", { cwd: "website" }),
-        r.exec("vitepress dev --port 5174", { cwd: "docs" }),
-        r.exec("bun dev", { cwd: "playground" }),
+        r.exec("pnpm exec astro dev", { cwd: "website" }),
+        r.exec("pnpm exec vitepress dev --port 5174", { cwd: "docs" }),
+        r.exec("bun run --hot src/server.ts", { cwd: "playground" }),
       ],
       { name: "Development" },
     );

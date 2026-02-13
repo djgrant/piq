@@ -5,11 +5,11 @@ export const command = defineCommand({
   run: async (r) => {
     await r.group("Deploy piq.dev", { layout: "sequence" }, async (g) => {
       await g.activity("Build site", async () => {
-        await r.exec("./commands/build.sh");
+        await r.exec("pok site build");
       });
 
       await g.activity("Deploy to Cloudflare Pages", async () => {
-        await r.exec("pnpx wrangler pages deploy");
+        await r.exec("pnpm exec wrangler pages deploy");
       });
     });
 
