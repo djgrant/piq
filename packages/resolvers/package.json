@@ -3,21 +3,22 @@
   "version": "0.0.2",
   "type": "module",
   "license": "MIT",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./edge": {
-      "types": "./src/edge.ts",
-      "import": "./src/edge.ts"
+      "types": "./dist/edge.d.ts",
+      "default": "./dist/edge.js"
     },
     "./static": {
-      "types": "./src/static.ts",
-      "import": "./src/static.ts"
+      "types": "./dist/static.d.ts",
+      "default": "./dist/static.js"
     }
   },
-  "files": ["src", "dist"],
+  "files": ["dist"],
   "dependencies": {
     "piqit": "workspace:*"
   },
