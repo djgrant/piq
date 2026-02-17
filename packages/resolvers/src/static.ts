@@ -28,7 +28,7 @@
  *   .exec();
  */
 
-import type { Resolver, StandardSchema } from "@piqit/core"
+import type { Resolver, StandardSchema } from "piqit"
 
 // =============================================================================
 // Filter Helpers

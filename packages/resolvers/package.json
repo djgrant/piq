@@ -20,7 +20,7 @@
   },
   "files": ["dist"],
   "dependencies": {
-    "@piqit/core": "workspace:*"
+    "piqit": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

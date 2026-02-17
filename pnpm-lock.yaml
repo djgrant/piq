@@ -63,7 +63,7 @@ importers:
 
   packages/resolvers:
     dependencies:
-      '@piqit/core':
+      piqit:
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -76,12 +76,12 @@ importers:
 
   playground:
     dependencies:
-      '@piqit/core':
-        specifier: workspace:*
-        version: link:../packages/core
       '@piqit/resolvers':
         specifier: workspace:*
         version: link:../packages/resolvers
+      piqit:
+        specifier: workspace:*
+        version: link:../packages/core
       zod:
         specifier: ^4.3.5
         version: 4.3.5

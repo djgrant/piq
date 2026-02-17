@@ -8,7 +8,7 @@
  * - Path building from params
  */
 
-import { StandardSchema } from "@piqit/core";
+import { StandardSchema } from "piqit";
 
 // =============================================================================
 // Type-level Parameter Extraction

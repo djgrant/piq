@@ -2,7 +2,7 @@ import { defineCommand, defineCheck } from "@pokit/core";
 import { $ } from "bun";
 import { z } from "zod";
 
-const PACKAGES = ["@piqit/core", "@piqit/resolvers"] as const;
+const PACKAGES = ["piqit", "@piqit/resolvers"] as const;
 
 const npmLoggedIn = defineCheck({
   label: "npm login",
