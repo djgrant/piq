@@ -7,7 +7,7 @@
 
 import type { Resolver, StandardSchema, Infer } from "piqit"
 import { compilePattern, createParamsSchema, type PathParams } from "./path-pattern"
-import { parseFrontmatter } from "./frontmatter"
+import { FrontmatterParseError, parseFrontmatterStrict } from "./frontmatter"
 import { parseMarkdownBody, type BodyOptions, type BodyResult, type Heading } from "./markdown"
 import path from "node:path"
 
@@ -300,10 +300,23 @@ export function fileMarkdown<
         // If filtering or selecting frontmatter, we need to read it
         if (hasFilter || wantFrontmatter) {
           content = await Bun.file(fullPath).text()
-          frontmatter = parseFrontmatter(content)
+          try {
+            frontmatter = parseFrontmatterStrict(content, fullPath)
+          } catch (error) {
+            if (error instanceof FrontmatterParseError) {
+              throw error
+            }
+            throw new FrontmatterParseError(
+              error instanceof Error ? error.message : String(error),
+              fullPath
+            )
+          }
 
           if (!frontmatter) {
-            frontmatter = {}
+            throw new FrontmatterParseError(
+              "missing YAML frontmatter block",
+              fullPath
+            )
           }
 
           // Check filter constraints

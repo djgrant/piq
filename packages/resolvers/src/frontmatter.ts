@@ -13,6 +13,18 @@
  * Matches --- at start, captures content, ends with ---
  */
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---/
+const FRONTMATTER_FENCE_ANYWHERE_REGEX = /(^|\r?\n)---\r?\n/
+
+export class FrontmatterParseError extends Error {
+  constructor(
+    public readonly reason: string,
+    public readonly filePath?: string
+  ) {
+    const location = filePath ? ` in ${filePath}` : ""
+    super(`Malformed frontmatter${location}: ${reason}`)
+    this.name = "FrontmatterParseError"
+  }
+}
 
 /**
  * Parse YAML frontmatter from content string.
@@ -33,6 +45,35 @@ export function parseFrontmatter(content: string): Record<string, unknown> | nul
 
   const yaml = match[1]
   return parseSimpleYaml(yaml)
+}
+
+/**
+ * Parse YAML frontmatter with strict malformed-data checks.
+ *
+ * - Returns null when no frontmatter is present.
+ * - Throws FrontmatterParseError when frontmatter fences are malformed.
+ */
+export function parseFrontmatterStrict(
+  content: string,
+  filePath?: string
+): Record<string, unknown> | null {
+  const hasFrontmatterAtStart = content.startsWith("---\n") || content.startsWith("---\r\n")
+  if (hasFrontmatterAtStart) {
+    const match = FRONTMATTER_REGEX.exec(content)
+    if (!match) {
+      throw new FrontmatterParseError("opening frontmatter fence is not closed", filePath)
+    }
+    return parseSimpleYaml(match[1])
+  }
+
+  if (FRONTMATTER_FENCE_ANYWHERE_REGEX.test(content)) {
+    throw new FrontmatterParseError(
+      "frontmatter fence found after non-frontmatter content (frontmatter must start at byte 0)",
+      filePath
+    )
+  }
+
+  return null
 }
 
 /**
