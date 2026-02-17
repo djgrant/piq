@@ -28,7 +28,7 @@
  *   .exec();
  */
 
-import type { Resolver, StandardSchema } from "piqit"
+import type { Resolver, StandardSchema } from "@piqit/core"
 
 // =============================================================================
 // Filter Helpers
@@ -56,7 +56,7 @@ function getByPath(obj: unknown, path: string): unknown {
  */
 function defaultFilter<T>(item: T, filter: Partial<Record<string, unknown>>): boolean {
   const frontmatter = (item as Record<string, unknown>).frontmatter as Record<string, unknown> | undefined
-  
+
   if (!frontmatter) {
     return Object.keys(filter).length === 0
   }
@@ -75,7 +75,7 @@ function defaultFilter<T>(item: T, filter: Partial<Record<string, unknown>>): bo
  */
 function matchesScan<T>(item: T, scan: Partial<Record<string, unknown>>): boolean {
   const params = (item as Record<string, unknown>).params as Record<string, unknown> | undefined
-  
+
   if (!params) {
     return Object.keys(scan).length === 0
   }
@@ -107,12 +107,12 @@ function selectFields<T extends object>(item: T, selectPaths: string[]): Partial
       // Regular path like "params.slug" or "frontmatter.title"
       const parts = path.split(".")
       const namespace = parts[0]
-      
+
       // Ensure namespace exists in result
       if (!result[namespace]) {
         result[namespace] = {}
       }
-      
+
       // Set the value
       const value = getByPath(item, path)
       if (parts.length === 2) {

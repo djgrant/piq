@@ -5,7 +5,7 @@
  * Optimized for reading only what's needed based on the query.
  */
 
-import type { Resolver, StandardSchema, Infer } from "piqit"
+import type { Resolver, StandardSchema, Infer } from "@piqit/core"
 import { compilePattern, createParamsSchema, type PathParams } from "./path-pattern"
 import { parseFrontmatter } from "./frontmatter"
 import { parseMarkdownBody, type BodyOptions, type BodyResult, type Heading } from "./markdown"

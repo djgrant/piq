@@ -8,6 +8,8 @@
  * - Path building from params
  */
 
+import { StandardSchema } from "@piqit/core";
+
 // =============================================================================
 // Type-level Parameter Extraction
 // =============================================================================
@@ -195,7 +197,7 @@ export function compilePattern(pattern: string): CompiledPattern {
  */
 export function createParamsSchema(
   pattern: CompiledPattern
-): import("piqit").StandardSchema<Record<string, string>> {
+): StandardSchema<Record<string, string>> {
   return {
     "~standard": {
       version: 1,

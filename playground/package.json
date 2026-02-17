@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "piqit": "workspace:*",
+    "@piqit/core": "workspace:*",
     "@piqit/resolvers": "workspace:*",
     "zod": "^4.3.5"
   },
