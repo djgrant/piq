@@ -14,14 +14,21 @@
  */
 export type StandardSchemaResult<T> =
   | { readonly value: T; readonly issues?: undefined }
-  | { readonly value?: undefined; readonly issues: readonly StandardSchemaIssue[] }
+  | { readonly issues: readonly StandardSchemaIssue[] }
 
 /**
  * A validation issue from StandardSchema
  */
 export interface StandardSchemaIssue {
   readonly message: string
-  readonly path?: readonly (string | number | symbol)[]
+  readonly path?: readonly (string | number | symbol | StandardSchemaPathSegment)[]
+}
+
+/**
+ * A path segment object from StandardSchema v1.
+ */
+export interface StandardSchemaPathSegment {
+  readonly key: string | number | symbol
 }
 
 /**
@@ -32,7 +39,7 @@ export interface StandardSchema<T = unknown> {
   readonly "~standard": {
     readonly version: 1
     readonly vendor: string
-    readonly validate: (value: unknown) => StandardSchemaResult<T>
+    readonly validate: (value: unknown) => StandardSchemaResult<T> | Promise<StandardSchemaResult<T>>
   }
 }
 

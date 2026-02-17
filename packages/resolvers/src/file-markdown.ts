@@ -96,7 +96,7 @@ function createResultSchema<TFrontmatter, TBody extends BodyResult>(
     "~standard": {
       version: 1,
       vendor: "piqit/resolvers",
-      validate(value: unknown) {
+      async validate(value: unknown) {
         if (value === null || typeof value !== "object") {
           return { issues: [{ message: "Expected object" }] }
         }
@@ -109,7 +109,7 @@ function createResultSchema<TFrontmatter, TBody extends BodyResult>(
         }
 
         // Validate frontmatter using the provided schema
-        const fmResult = frontmatterSchema["~standard"].validate(obj.frontmatter)
+        const fmResult = await frontmatterSchema["~standard"].validate(obj.frontmatter)
         if (fmResult.issues) {
           return {
             issues: fmResult.issues.map((issue) => ({
