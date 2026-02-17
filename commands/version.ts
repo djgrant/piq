@@ -2,7 +2,7 @@ import { defineCommand } from "@pokit/core";
 import { versionBump } from "bumpp";
 
 const PACKAGE_FILES = [
-  "packages/core/package.json",
+  "packages/piqit/package.json",
   "packages/resolvers/package.json",
 ];
 

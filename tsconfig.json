@@ -20,7 +20,7 @@
   },
   "include": [],
   "references": [
-    { "path": "packages/core" },
+    { "path": "packages/piqit" },
     { "path": "packages/resolvers" }
   ]
 }

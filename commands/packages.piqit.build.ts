@@ -1,8 +1,8 @@
 import { defineCommand } from "@pokit/core";
 
 export const command = defineCommand({
-  label: "Build core package",
+  label: "Build piqit package",
   run: async (r) => {
-    await r.exec("pnpm exec tsc", { cwd: "packages/core" });
+    await r.exec("pnpm exec tsc", { cwd: "packages/piqit" });
   },
 });

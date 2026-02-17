@@ -49,7 +49,7 @@ importers:
         specifier: ^1.6.4
         version: 1.6.4(@algolia/client-search@5.46.3)(@types/node@25.0.6)(lightningcss@1.30.2)(postcss@8.5.6)(react@19.2.4)(search-insights@2.17.3)(typescript@5.9.3)
 
-  packages/core:
+  packages/piqit:
     devDependencies:
       '@piqit/resolvers':
         specifier: workspace:*
@@ -65,7 +65,7 @@ importers:
     dependencies:
       piqit:
         specifier: workspace:*
-        version: link:../core
+        version: link:../piqit
     devDependencies:
       '@types/bun':
         specifier: latest
@@ -81,7 +81,7 @@ importers:
         version: link:../packages/resolvers
       piqit:
         specifier: workspace:*
-        version: link:../packages/core
+        version: link:../packages/piqit
       zod:
         specifier: ^4.3.5
         version: 4.3.5

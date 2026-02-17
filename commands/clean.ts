@@ -6,7 +6,7 @@ export const command = defineCommand({
   run: async (r) => {
     await r.group("Clean workspace", { layout: "sequence" }, async (g) => {
       await g.activity("Remove package build outputs", async () => {
-        await rm("packages/core/dist", { recursive: true, force: true });
+        await rm("packages/piqit/dist", { recursive: true, force: true });
         await rm("packages/resolvers/dist", { recursive: true, force: true });
       });
 
