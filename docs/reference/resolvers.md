@@ -37,6 +37,7 @@ const posts = fileMarkdown({
 
 - `base: string`
 - `path: string` with `{param}` placeholders
+- Example: `TASK-{num}-{title}.md` matches `TASK-123-title-which-may-include-hyphens.md`
 - `frontmatter: StandardSchema`
 - `body?: { raw?: boolean; html?: boolean; headings?: boolean }`
 
@@ -48,6 +49,7 @@ const posts = fileMarkdown({
 - `params.*` does not require file content reads.
 - `frontmatter.*` reads and parses frontmatter.
 - `body.*` parses body according to requested fields.
+- For multi-param segments, matching is left-to-right, so trailing params can include additional separators (for example `-`).
 
 ### Runtime
 

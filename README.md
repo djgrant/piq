@@ -301,9 +301,11 @@ Path patterns use `{param}` syntax to define URL-style segments:
 ```typescript
 '{year}/{slug}.md'           // Matches: 2024/hello-world.md
 '{category}/{year}/{slug}.md' // Matches: tech/2024/my-post.md
+'TASK-{num}-{title}.md'      // Matches: TASK-123-title-which-may-include-hyphens.md
 ```
 
 Parameters extracted from the path are available as `params.*` in select.
+When multiple params share a segment, matching is left-to-right, so trailing params can include additional separators (like `-`).
 
 ### StandardSchema
 
