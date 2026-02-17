@@ -96,6 +96,23 @@ describe("compilePattern", () => {
       slug: "my-post",
     })
   })
+
+  test("matches multi-param filenames with hyphenated trailing value", () => {
+    const pattern = compilePattern("{status}/wp-{priority}-{name}.md")
+    expect(pattern.match("todo/wp-1-build-feature.md")).toEqual({
+      status: "todo",
+      priority: "1",
+      name: "build-feature",
+    })
+  })
+
+  test("matches TASK-style filename params with hyphenated title", () => {
+    const pattern = compilePattern("TASK-{num}-{title}.md")
+    expect(pattern.match("TASK-123-title-which-may-include-hyphens.md")).toEqual({
+      num: "123",
+      title: "title-which-may-include-hyphens",
+    })
+  })
 })
 
 // =============================================================================

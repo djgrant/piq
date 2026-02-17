@@ -133,7 +133,9 @@ export function compilePattern(pattern: string): CompiledPattern {
       if (char === "{" || char === "}") return char
       return "\\" + char
     })
-    .replace(PARAM_REGEX, "([^/]+)")
+    // Use non-greedy groups so adjacent params separated by literals
+    // (e.g. "wp-{priority}-{name}.md") split as expected.
+    .replace(PARAM_REGEX, "([^/]+?)")
 
   const matchRegex = new RegExp(`^${regexPattern}$`)
 
