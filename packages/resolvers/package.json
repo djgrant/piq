@@ -6,14 +6,17 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./edge": {
+      "bun": "./src/edge.ts",
       "types": "./dist/edge.d.ts",
       "default": "./dist/edge.js"
     },
     "./static": {
+      "bun": "./src/static.ts",
       "types": "./dist/static.d.ts",
       "default": "./dist/static.js"
     }

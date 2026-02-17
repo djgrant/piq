@@ -113,6 +113,16 @@ describe("compilePattern", () => {
       title: "title-which-may-include-hyphens",
     })
   })
+
+  test("supports constrained params with inline token regex", () => {
+    const pattern = compilePattern("TASK-{num:\\d+}-{slug}.md")
+
+    expect(pattern.match("TASK-003-reject-blank-titles-in-create-command.md")).toEqual({
+      num: "003",
+      slug: "reject-blank-titles-in-create-command",
+    })
+    expect(pattern.match("TASK-abc-reject-blank-titles-in-create-command.md")).toBeNull()
+  })
 })
 
 // =============================================================================

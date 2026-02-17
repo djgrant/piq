@@ -22,8 +22,10 @@ import { StandardSchema } from "piqit";
  * // = { year: string } & { slug: string }
  */
 export type ExtractParams<P extends string> = P extends `${string}{${infer Param}}${infer Rest}`
-  ? { [K in Param]: string } & ExtractParams<Rest>
+  ? { [K in ExtractParamName<Param>]: string } & ExtractParams<Rest>
   : {}
+
+type ExtractParamName<T extends string> = T extends `${infer Name}:${string}` ? Name : T
 
 /**
  * Simplify a type by flattening intersections.
@@ -98,7 +100,7 @@ export interface CompiledPattern {
  * Regex to match parameter placeholders in patterns.
  * Matches {paramName} where paramName is alphanumeric + underscores.
  */
-const PARAM_REGEX = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g
+const PARAM_REGEX = /\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^{}]+))?\}/g
 
 /**
  * Characters that need escaping in regex.
@@ -119,23 +121,39 @@ const REGEX_ESCAPE = /[.*+?^${}()|[\]\\]/g
 export function compilePattern(pattern: string): CompiledPattern {
   // Extract all parameter names in order
   const paramNames: string[] = []
+  const placeholders: Array<{ raw: string; name: string; constraint?: string }> = []
   let match: RegExpExecArray | null
   const regex = new RegExp(PARAM_REGEX.source, "g")
   while ((match = regex.exec(pattern)) !== null) {
-    paramNames.push(match[1])
+    const name = match[1]
+    const constraint = match[2] || undefined
+    paramNames.push(name)
+    placeholders.push({
+      raw: match[0],
+      name,
+      constraint,
+    })
   }
 
-  // Build the match regex by replacing {param} with capturing groups
-  // Each param can match anything except path separators
-  const regexPattern = pattern
-    .replace(REGEX_ESCAPE, (char) => {
-      // Don't escape our param placeholders - we'll handle them separately
-      if (char === "{" || char === "}") return char
-      return "\\" + char
-    })
+  // Build the match regex by escaping literal segments and inserting
+  // capturing groups for placeholders.
+  let regexPattern = ""
+  let cursor = 0
+  const placeholderRegex = new RegExp(PARAM_REGEX.source, "g")
+  let placeholderMatch: RegExpExecArray | null
+  while ((placeholderMatch = placeholderRegex.exec(pattern)) !== null) {
+    const [raw, _name, constraint] = placeholderMatch
+    const literal = pattern.slice(cursor, placeholderMatch.index)
+    regexPattern += literal.replace(REGEX_ESCAPE, "\\$&")
+
     // Use non-greedy groups so adjacent params separated by literals
     // (e.g. "wp-{priority}-{name}.md") split as expected.
-    .replace(PARAM_REGEX, "([^/]+?)")
+    // Allow inline constraints via {param:...}, for example {num:\\d+}.
+    const capture = constraint?.trim() || "[^/]+?"
+    regexPattern += `(${capture})`
+    cursor = placeholderMatch.index + raw.length
+  }
+  regexPattern += pattern.slice(cursor).replace(REGEX_ESCAPE, "\\$&")
 
   const matchRegex = new RegExp(`^${regexPattern}$`)
 
@@ -147,14 +165,14 @@ export function compilePattern(pattern: string): CompiledPattern {
       let glob = pattern
 
       // Replace each param with either its constrained value or a wildcard
-      for (const name of paramNames) {
-        const value = constraints?.[name]
+      for (const placeholder of placeholders) {
+        const value = constraints?.[placeholder.name]
         if (value !== undefined && value !== null) {
           // Use the constrained value
-          glob = glob.replace(`{${name}}`, String(value))
+          glob = glob.replace(placeholder.raw, String(value))
         } else {
           // Use a wildcard - * matches anything except /
-          glob = glob.replace(`{${name}}`, "*")
+          glob = glob.replace(placeholder.raw, "*")
         }
       }
 
@@ -174,12 +192,12 @@ export function compilePattern(pattern: string): CompiledPattern {
 
     build(params: Record<string, string>): string {
       let result = pattern
-      for (const name of paramNames) {
-        const value = params[name]
+      for (const placeholder of placeholders) {
+        const value = params[placeholder.name]
         if (value === undefined) {
-          throw new Error(`Missing required param: ${name}`)
+          throw new Error(`Missing required param: ${placeholder.name}`)
         }
-        result = result.replace(`{${name}}`, value)
+        result = result.replace(placeholder.raw, value)
       }
       return result
     },
