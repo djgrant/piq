@@ -66,6 +66,13 @@ export function parseFrontmatterStrict(
     return parseSimpleYaml(match[1])
   }
 
+  if (content.startsWith("---")) {
+    throw new FrontmatterParseError(
+      "opening frontmatter fence must be followed by a newline",
+      filePath
+    )
+  }
+
   if (FRONTMATTER_FENCE_ANYWHERE_REGEX.test(content)) {
     throw new FrontmatterParseError(
       "frontmatter fence found after non-frontmatter content (frontmatter must start at byte 0)",
@@ -282,6 +289,84 @@ export async function readFrontmatter(
 
     return parseFrontmatter(buffer)
   } catch {
+    return null
+  }
+}
+
+/**
+ * Read and parse frontmatter with strict malformed-data checks.
+ *
+ * Reads incrementally and stops once frontmatter is complete when it starts
+ * at byte 0. Falls back to scanning the whole file only when needed to
+ * preserve strict fence-position behavior.
+ */
+export async function readFrontmatterStrict(
+  path: string,
+  chunkSize = 8192
+): Promise<Record<string, unknown> | null> {
+  try {
+    const file = Bun.file(path)
+    const size = file.size
+    if (size === 0) return null
+
+    const firstReadSize = Math.min(chunkSize, size)
+    const firstChunk = await file.slice(0, firstReadSize).text()
+
+    const hasFrontmatterAtStart = firstChunk.startsWith("---\n") || firstChunk.startsWith("---\r\n")
+
+    if (hasFrontmatterAtStart) {
+      let content = firstChunk
+      let offset = firstReadSize
+
+      while (!/\r?\n---/.test(content)) {
+        if (offset >= size) {
+          throw new FrontmatterParseError("opening frontmatter fence is not closed", path)
+        }
+
+        const end = Math.min(offset + chunkSize, size)
+        const nextChunk = await file.slice(offset, end).text()
+        content += nextChunk
+        offset = end
+      }
+
+      return parseFrontmatterStrict(content, path)
+    }
+
+    if (firstChunk.startsWith("---")) {
+      throw new FrontmatterParseError(
+        "opening frontmatter fence must be followed by a newline",
+        path
+      )
+    }
+
+    let carry = firstChunk.slice(-8)
+    if (FRONTMATTER_FENCE_ANYWHERE_REGEX.test(firstChunk)) {
+      throw new FrontmatterParseError(
+        "frontmatter fence found after non-frontmatter content (frontmatter must start at byte 0)",
+        path
+      )
+    }
+
+    for (let offset = firstReadSize; offset < size; offset += chunkSize) {
+      const end = Math.min(offset + chunkSize, size)
+      const chunk = await file.slice(offset, end).text()
+      const sample = carry + chunk
+
+      if (FRONTMATTER_FENCE_ANYWHERE_REGEX.test(sample)) {
+        throw new FrontmatterParseError(
+          "frontmatter fence found after non-frontmatter content (frontmatter must start at byte 0)",
+          path
+        )
+      }
+
+      carry = sample.slice(-8)
+    }
+
+    return null
+  } catch (error) {
+    if (error instanceof FrontmatterParseError) {
+      throw error
+    }
     return null
   }
 }

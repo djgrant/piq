@@ -1,7 +1,7 @@
-import { describe, test, expect, beforeAll } from "bun:test"
+import { describe, test, expect } from "bun:test"
 import { fileMarkdown } from "../src/file-markdown"
 import { compilePattern } from "../src/path-pattern"
-import { parseFrontmatter, readFrontmatter } from "../src/frontmatter"
+import { parseFrontmatter, parseFrontmatterStrict, readFrontmatter } from "../src/frontmatter"
 import { parseMarkdownBody, extractHeadings, slugify } from "../src/markdown"
 import type { StandardSchema } from "piqit"
 import path from "node:path"
@@ -156,6 +156,20 @@ tags: [one, two, three]
     })
   })
 
+  test("parses block arrays with indentation", () => {
+    const content = `---
+tags:
+  - one
+  - two
+  - three
+---`
+
+    const fm = parseFrontmatter(content)
+    expect(fm).toEqual({
+      tags: ["one", "two", "three"],
+    })
+  })
+
   test("parses quoted strings", () => {
     const content = `---
 title: "Hello: World"
@@ -200,6 +214,53 @@ price: 9.99
   test("returns null for content without frontmatter", () => {
     const content = "Just some text without frontmatter."
     expect(parseFrontmatter(content)).toBeNull()
+  })
+
+  test("parses multiline blocks with preserved indentation", () => {
+    const content = `---
+summary: |
+  first line
+    indented line
+  final line
+
+status: published
+---`
+
+    const fm = parseFrontmatter(content)
+    expect(fm).toEqual({
+      summary: "first line\n  indented line\nfinal line\n",
+      status: "published",
+    })
+  })
+
+  test("parses CRLF frontmatter", () => {
+    const content = "---\r\ntitle: Hello\r\nstatus: published\r\n---\r\n\r\nBody"
+    const fm = parseFrontmatter(content)
+
+    expect(fm).toEqual({
+      title: "Hello",
+      status: "published",
+    })
+  })
+})
+
+describe("parseFrontmatterStrict", () => {
+  test("throws when opening fence is not closed", () => {
+    expect(() => parseFrontmatterStrict("---\ntitle: test\nbody: value")).toThrow(
+      "opening frontmatter fence is not closed"
+    )
+  })
+
+  test("throws when fence appears after non-frontmatter content", () => {
+    expect(() => parseFrontmatterStrict("Hello\n---\ntitle: test\n---\n")).toThrow(
+      "frontmatter fence found after non-frontmatter content"
+    )
+  })
+
+  test("throws when opening fence is not followed by newline", () => {
+    expect(() => parseFrontmatterStrict("---title: test\n---\n")).toThrow(
+      "opening frontmatter fence must be followed by a newline"
+    )
   })
 })
 
