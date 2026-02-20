@@ -18,7 +18,7 @@ export const command = defineCommand({
       push: true,
       tag: "v%s",
       commit: "release: v%s",
-      preid: "alpha",
+      preid: "rc",
       confirm: !skipConfirm,
     });
   },
