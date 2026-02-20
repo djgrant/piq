@@ -1,7 +1,7 @@
-import { defineChangelogEntry } from '@notation/looped'
+import { defineChangesetEntry } from '@notation/looped'
 
-export default defineChangelogEntry({
-  schema: 'changelog.entry',
+export default defineChangesetEntry({
+  schema: 'changeset.entry',
   date: '2026-02-17',
   slug: 'piq',
   title: 'Constrained Path Token Parsing in Piq',
