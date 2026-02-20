@@ -1,0 +1,37 @@
+# v2026.02.17-piq
+
+## What Changed
+
+This update brings more power and precision to `piq`'s file resolution system, specifically for markdown-based document stores.
+
+### Constrained Path Patterns
+
+We've introduced the ability to add regex constraints directly into path tokens. This is a huge win for disambiguation in complex folder structures. For example, `{num:\\d+}` ensures that a token only matches numeric strings.
+
+<Sample name="constrained-pattern.ts" />
+
+### Refined `fileMarkdown` Resolver
+
+The `fileMarkdown` resolver has been updated to support these constrained patterns. This allows us to build very specific resolvers that only pick up valid task files while ignoring meta-documents or temporary files.
+
+<Sample name="file-markdown-usage.ts" />
+
+## Why This Matters
+
+Previously, `piq` was sometimes too broad in its matching, which could lead to "dirty" query results. By allowing developers to specify the exact shape of their file paths, we've made `piq` much more reliable for structured document storage.
+
+## How To Use It
+
+Use the `{token:regex}` syntax in your resolver paths:
+- `tasks/{num:\\d+}.md`
+- `posts/{year:\\d{4}}-{slug}.md`
+
+## Files Changed
+
+- `piq/packages/resolvers/src/file-markdown.ts`
+- `piq/packages/resolvers/src/pattern.ts`
+
+## Validation
+
+- Added unit tests for constrained patterns.
+- Verified that existing `looped` resolvers still function correctly with the new syntax.
