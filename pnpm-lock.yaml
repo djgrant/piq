@@ -1082,6 +1082,7 @@ packages:
   '@pokit/tabs-ink@0.0.42':
     resolution: {integrity: sha512-4ytQnXGfsy1QBU5DgIILzrEc1zccqbPjL9OR0JhF6jVMJTZ1loZCVMR4iEjvaQvxmZoSiFdKBjT+Y8AuP+bdUQ==}
     engines: {bun: '>=1.0.0'}
+    deprecated: 'Deprecated: use @pokit/opentui'
     peerDependencies:
       '@pokit/core': 0.0.42
       '@pokit/tabs-core': 0.0.42
