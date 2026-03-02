@@ -10,9 +10,9 @@
     "docs"
   ],
   "devDependencies": {
-    "@pokit/core": "^0.0.42",
-    "@pokit/prompter-clack": "^0.0.42",
-    "@pokit/reporter-clack": "^0.0.42",
+    "@pokit/core": "0.0.63-rc.1",
+    "@pokit/prompter-clack": "0.0.63-rc.1",
+    "@pokit/reporter-clack": "0.0.63-rc.1",
     "@pokit/tabs-ink": "^0.0.42",
     "@types/bun": "latest",
     "bumpp": "^10.3.2",
