@@ -40,9 +40,11 @@ export {
   FrontmatterParseError,
   parseFrontmatter,
   parseFrontmatterStrict,
+  parseFrontmatterPickStrict,
   extractFrontmatterString,
   getFrontmatterEndOffset,
   readFrontmatter,
+  readFrontmatterPickStrict,
   readFrontmatterWithOffset,
 } from "./frontmatter"
 

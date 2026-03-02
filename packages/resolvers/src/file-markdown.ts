@@ -7,7 +7,14 @@
 
 import type { Resolver, StandardSchema, Infer } from "piqit"
 import { compilePattern, createParamsSchema, type PathParams } from "./path-pattern"
-import { FrontmatterParseError, parseFrontmatterStrict, readFrontmatterStrict } from "./frontmatter"
+import {
+  FrontmatterParseError,
+  parseFrontmatterStrict,
+  parseFrontmatterPickStrict,
+  readFrontmatterStrict,
+  readFrontmatterPickStrict,
+  type FrontmatterParseOptions,
+} from "./frontmatter"
 import { parseMarkdownBody, type BodyOptions, type BodyResult, type Heading } from "./markdown"
 import path from "node:path"
 
@@ -40,6 +47,11 @@ export interface FileMarkdownOptions<
    * The schema's inferred type defines filter parameters.
    */
   frontmatter: TFrontmatter
+
+  /**
+   * Low-level frontmatter parsing options.
+   */
+  frontmatterParse?: FrontmatterParseOptions
 
   /**
    * Body parsing options.
@@ -192,6 +204,33 @@ function matchesFilter(
   return true
 }
 
+function getFrontmatterKeys(selectPaths: string[], filter?: Record<string, unknown>): {
+  wantAll: boolean
+  keys: string[]
+} {
+  let wantAll = false
+  const keys = new Set<string>()
+
+  for (const p of selectPaths) {
+    if (p === "frontmatter.*") {
+      wantAll = true
+      continue
+    }
+    if (p.startsWith("frontmatter.")) {
+      const key = p.slice("frontmatter.".length).split(".")[0]
+      if (key) keys.add(key)
+    }
+  }
+
+  if (filter) {
+    for (const key of Object.keys(filter)) {
+      if (key) keys.add(key)
+    }
+  }
+
+  return { wantAll, keys: [...keys] }
+}
+
 // =============================================================================
 // Resolver Factory
 // =============================================================================
@@ -233,6 +272,7 @@ export function fileMarkdown<
     : path.join(process.cwd(), options.base)
 
   const bodyOptions: BodyOptions = options.body || {}
+  const frontmatterParseOptions = options.frontmatterParse
 
   // Create schemas
   const scanSchema = createParamsSchema(pattern) as StandardSchema<Partial<PathParams<TPath>>>
@@ -283,6 +323,10 @@ export function fileMarkdown<
       const wantBody = needsBody(spec.select)
       const hasFilter = spec.filter && Object.keys(spec.filter).length > 0
       const neededBodyParts = wantBody ? getNeededBodyParts(spec.select) : {}
+      const { wantAll: wantAllFrontmatter, keys: frontmatterKeys } = getFrontmatterKeys(
+        spec.select,
+        (spec.filter as Record<string, unknown> | undefined) ?? undefined
+      )
 
       // 4. Process each file
       for (const relativePath of files) {
@@ -302,9 +346,13 @@ export function fileMarkdown<
           try {
             if (wantBody) {
               content = await Bun.file(fullPath).text()
-              frontmatter = parseFrontmatterStrict(content, fullPath)
+              frontmatter = wantAllFrontmatter || frontmatterKeys.length === 0
+                ? parseFrontmatterStrict(content, fullPath, frontmatterParseOptions)
+                : parseFrontmatterPickStrict(content, frontmatterKeys, fullPath, frontmatterParseOptions)
             } else {
-              frontmatter = await readFrontmatterStrict(fullPath)
+              frontmatter = wantAllFrontmatter || frontmatterKeys.length === 0
+                ? await readFrontmatterStrict(fullPath, 8192, frontmatterParseOptions)
+                : await readFrontmatterPickStrict(fullPath, frontmatterKeys, 8192, frontmatterParseOptions)
             }
           } catch (error) {
             if (error instanceof FrontmatterParseError) {
