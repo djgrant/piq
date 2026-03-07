@@ -1,7 +1,7 @@
 ---
 title: piq QueryBuilder throws when exec() called without select()
 created: "2026-03-06T17:36:03.075Z"
-updated: "2026-03-06T17:36:03.075Z"
+updated: "2026-03-07T10:59:41.491Z"
 priority: low
 assignee: agent
 tags: [dx, api]

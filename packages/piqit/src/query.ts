@@ -149,6 +149,12 @@ export class QueryBuilder<
    * @returns Promise resolving to array of typed results
    */
   async exec(): Promise<TResult[]> {
+    if (!this._selectPaths && !this._selectAliases) {
+      throw new Error(
+        "Query execution requires .select(...). Call .select('params.*', 'frontmatter.*', 'body.*') before exec() if you want every namespace."
+      )
+    }
+
     const selectPaths = this.getSelectPaths()
 
     const spec: QuerySpec<
@@ -212,9 +218,7 @@ export class QueryBuilder<
     if (this._selectAliases) {
       return Object.values(this._selectAliases)
     }
-    // No select specified - this would need to select all fields
-    // For now, throw an error
-    throw new Error("No select specified. Use .select() to specify fields to retrieve.")
+    return []
   }
 }
 

@@ -370,10 +370,25 @@ describe("piq API", () => {
 // =============================================================================
 
 describe("Error handling", () => {
-  test("throws when no select specified", async () => {
+  test("throws from exec when no select specified", async () => {
     const resolver = createMockResolver()
     const query = from(resolver)
 
-    await expect(query.exec()).rejects.toThrow("No select specified")
+    await expect(query.exec()).rejects.toThrow(
+      "Query execution requires .select(...)"
+    )
+  })
+
+  test("throws from stream when no select specified", async () => {
+    const resolver = createMockResolver()
+    const query = from(resolver)
+
+    await expect(
+      (async () => {
+        for await (const _result of query.stream()) {
+          void _result
+        }
+      })()
+    ).rejects.toThrow("Query execution requires .select(...)")
   })
 })
