@@ -5,3 +5,4 @@ dist/
 bun.lock
 .screenshots/
 *tsconfig.tsbuildinfo
+.looped/
