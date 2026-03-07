@@ -7,7 +7,7 @@
  * - Headings with slugs
  */
 
-import { getFrontmatterEndOffset } from "./frontmatter"
+import { getFrontmatterEndOffset } from "./frontmatter.js"
 
 // =============================================================================
 // Types

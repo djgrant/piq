@@ -12,7 +12,7 @@ import {
   expandWildcards,
   type Resolver,
   type StandardSchema,
-} from "./index"
+} from "./index.js"
 
 // =============================================================================
 // Mock Schema Helper

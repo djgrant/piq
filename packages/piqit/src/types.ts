@@ -62,9 +62,9 @@ export type {
   UndotWithAliases,
   ExpandAllWildcards,
   ValidateSelect
-} from "./select-types"
+} from "./select-types.js"
 
-import type { SelectablePaths } from "./select-types"
+import type { SelectablePaths } from "./select-types.js"
 
 // =============================================================================
 // QuerySpec

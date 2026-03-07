@@ -6,7 +6,7 @@
  */
 
 import type { Resolver, StandardSchema, Infer } from "piqit"
-import { compilePattern, createParamsSchema, type PathParams } from "./path-pattern"
+import { compilePattern, createParamsSchema, type PathParams } from "./path-pattern.js"
 import {
   FrontmatterParseError,
   parseFrontmatterStrict,
@@ -14,8 +14,13 @@ import {
   readFrontmatterStrict,
   readFrontmatterPickStrict,
   type FrontmatterParseOptions,
-} from "./frontmatter"
-import { parseMarkdownBody, type BodyOptions, type BodyResult, type Heading } from "./markdown"
+} from "./frontmatter.js"
+import {
+  parseMarkdownBody,
+  type BodyOptions,
+  type BodyResult,
+  type Heading,
+} from "./markdown.js"
 import path from "node:path"
 
 // =============================================================================

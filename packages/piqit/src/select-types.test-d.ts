@@ -15,7 +15,7 @@ import type {
   UndotWithAliases,
   ExpandAllWildcards,
   ValidateSelect
-} from "./select-types"
+} from "./select-types.js"
 
 // =============================================================================
 // Type Assertion Utilities

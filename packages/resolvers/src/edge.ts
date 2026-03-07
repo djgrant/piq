@@ -12,4 +12,4 @@
  * @packageDocumentation
  */
 
-export { staticContent, staticResolver } from "./static"
+export { staticContent, staticResolver } from "./static.js"

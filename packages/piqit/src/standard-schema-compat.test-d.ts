@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod"
-import type { StandardSchema } from "./types"
+import type { StandardSchema } from "./types.js"
 
 declare function acceptsStandardSchema<T>(schema: StandardSchema<T>): void
 

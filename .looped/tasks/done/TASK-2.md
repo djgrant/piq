@@ -1,9 +1,9 @@
 ---
 title: Fix Node ESM packaging for piqit and @piqit/resolvers
 created: "2026-03-06T17:38:20.982Z"
-updated: "2026-03-06T17:38:20.982Z"
+updated: "2026-03-07T08:05:13.967Z"
 priority: high
-assignee: unassigned
+assignee: agent
 estimate: medium
 tags: [packaging, esm, runtime]
 ---

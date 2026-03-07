@@ -12,25 +12,25 @@
 // Filesystem Resolver (Node.js/Bun only)
 // =============================================================================
 
-export { fileMarkdown } from "./file-markdown"
-export type { FileMarkdownOptions, FileMarkdownResult } from "./file-markdown"
+export { fileMarkdown } from "./file-markdown.js"
+export type { FileMarkdownOptions, FileMarkdownResult } from "./file-markdown.js"
 
 // =============================================================================
 // Static Content Resolver (Edge/Workers compatible)
 // =============================================================================
 
-export { staticContent, staticResolver } from "./static"
+export { staticContent, staticResolver } from "./static.js"
 
 // =============================================================================
 // Path Pattern Utilities
 // =============================================================================
 
-export { compilePattern, createParamsSchema } from "./path-pattern"
+export { compilePattern, createParamsSchema } from "./path-pattern.js"
 export type {
   CompiledPattern,
   ExtractParams,
   PathParams,
-} from "./path-pattern"
+} from "./path-pattern.js"
 
 // =============================================================================
 // Frontmatter Utilities
@@ -46,7 +46,7 @@ export {
   readFrontmatter,
   readFrontmatterPickStrict,
   readFrontmatterWithOffset,
-} from "./frontmatter"
+} from "./frontmatter.js"
 
 // =============================================================================
 // Markdown Utilities
@@ -59,11 +59,11 @@ export {
   markdownToHtml,
   readMarkdownBody,
   readParsedBody,
-} from "./markdown"
+} from "./markdown.js"
 
 export type {
   BodyOptions,
   BodyResult,
   BodyShape,
   Heading,
-} from "./markdown"
+} from "./markdown.js"

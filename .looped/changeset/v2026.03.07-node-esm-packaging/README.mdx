@@ -1,0 +1,24 @@
+# v2026.03.07-node-esm-packaging
+
+## What Changed
+
+This update hardens the published `piq` artifacts for plain Node ESM consumers.
+
+### Node-compatible package entrypoints
+
+The `piqit` and `@piqit/resolvers` packages now author internal relative imports with explicit `.js` specifiers and compile under package-local `NodeNext` settings. That means the emitted `dist` files can be loaded directly by Node without relying on bundler-style extension resolution.
+
+### Artifact smoke coverage
+
+The package build commands now run a Node smoke script that imports each built entrypoint from `dist/` after compilation. This catches broken ESM specifiers in the published artifacts before downstream apps discover them at runtime.
+
+## Why This Matters
+
+Downstream consumers like `looped` and `smithers` load these packages as published ESM artifacts, not as TypeScript source. Before this change, Node failed on extensionless `dist` imports such as `./query` and `./file-markdown`, which broke package consumers and cascaded into workspace bootstrap failures.
+
+## Validation
+
+- `pnpm exec tsc` in `packages/piqit`
+- `pnpm exec tsc` in `packages/resolvers`
+- `node ./scripts/smoke-node-esm-artifacts.mjs`
+- `bun test`

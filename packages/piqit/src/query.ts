@@ -13,8 +13,8 @@ import type {
   HasCollision,
   Undot,
   UndotWithAliases,
-} from "./types"
-import { undot, undotWithAliases } from "./undot"
+} from "./types.js"
+import { undot, undotWithAliases } from "./undot.js"
 
 // =============================================================================
 // Type Helpers

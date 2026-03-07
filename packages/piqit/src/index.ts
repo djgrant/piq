@@ -31,13 +31,13 @@ export type {
 
   // Resolver types
   Resolver,
-} from "./types"
+} from "./types.js"
 
 // =============================================================================
 // Query Builder
 // =============================================================================
 
-export { QueryBuilder, SingleQueryBuilder, from } from "./query"
+export { QueryBuilder, SingleQueryBuilder, from } from "./query.js"
 
 // =============================================================================
 // Undotting Utilities
@@ -49,13 +49,13 @@ export {
   undotAll,
   undotAllWithAliases,
   expandWildcards,
-} from "./undot"
+} from "./undot.js"
 
 // =============================================================================
 // Main API Object
 // =============================================================================
 
-import { from } from "./query"
+import { from } from "./query.js"
 
 /**
  * The main piq API object.
