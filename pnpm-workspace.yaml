@@ -3,3 +3,11 @@ packages:
   - playground
   - website
   - docs
+allowBuilds:
+  esbuild: set this to true or false
+  sharp: set this to true or false
+  workerd: set this to true or false
+minimumReleaseAgeExclude:
+  - '@pokit/core@0.1.0'
+  - '@pokit/prompter-clack@0.1.0'
+  - '@pokit/reporter-clack@0.1.0'
