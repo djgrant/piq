@@ -5,7 +5,7 @@ description: Core query builder package
 
 # `piqit`
 
-Core package for query building, result shaping, and type-safe select inference.
+`piqit` exports the query builder, result-shaping utilities, and the type machinery behind select-path inference.
 
 ## Install
 
@@ -48,7 +48,7 @@ const rows = await piq
   .exec()
 ```
 
-## Behavioral Notes
+## Execution Notes
 
 - `select()` is required before execution.
 - `scan()` and `filter()` merge constraints across repeated calls.

@@ -5,7 +5,7 @@ description: Resolver package for filesystem and static content query sources
 
 # `@piqit/resolvers`
 
-Resolver package for content access strategies used by `piqit`.
+`@piqit/resolvers` exports resolver factories and parsing utilities for filesystem-backed and precompiled content sources.
 
 ## Install
 
@@ -34,7 +34,7 @@ import { staticContent as edgeStaticContent } from '@piqit/resolvers/edge'
 - Frontmatter: `parseFrontmatter`, `readFrontmatter`, `readFrontmatterWithOffset`
 - Markdown: `parseMarkdownBody`, `extractHeadings`, `slugify`, `markdownToHtml`
 
-## `fileMarkdown` at a Glance
+## `fileMarkdown`
 
 ```typescript
 const posts = fileMarkdown({
@@ -52,14 +52,14 @@ const posts = fileMarkdown({
 - Scan values come from path placeholders.
 - Filter checks frontmatter equality.
 
-## `staticContent` at a Glance
+## `staticContent`
 
 ```typescript
 const postsResolver = staticContent(precompiledPosts)
 ```
 
 - No filesystem dependency.
-- Intended for edge/runtime-safe execution.
+- Intended for edge and other runtime-safe execution environments.
 
 ## Build/Check (Workspace)
 

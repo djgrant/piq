@@ -5,6 +5,8 @@ description: Common query patterns and resolver usage recipes
 
 # Recipes
 
+Examples showing common piq queries.
+
 ## Published Posts by Year
 
 ```typescript
@@ -51,7 +53,7 @@ const rows = await piq
   .exec()
 ```
 
-Use wildcards when you need broad namespace output; prefer explicit fields in stable production contracts.
+Generally explicit fields are recommend but you can use wildcards when you want the entire payload. 
 
 ## Build-Time Static Dataset for Edge
 
