@@ -1,38 +1,8 @@
 import { defineCommand } from "@pokit/core";
 import { $ } from "bun";
-import { readFileSync } from "node:fs";
 import { z } from "zod";
 
 const PACKAGES = ["piqit", "@piqit/resolvers", "@piqit/cli"] as const;
-const RC_VERSION_RE = /-rc(?:\.|$)/i;
-
-const PACKAGE_PATHS: Record<string, string> = {
-  piqit: "packages/piqit/package.json",
-  "@piqit/resolvers": "packages/resolvers/package.json",
-  "@piqit/cli": "packages/cli/package.json",
-};
-
-function assertRcVersions(packages: readonly string[]) {
-  const nonRc: string[] = [];
-
-  for (const pkg of packages) {
-    const packagePath = PACKAGE_PATHS[pkg];
-    if (!packagePath) {
-      throw new Error(`Missing package path mapping for ${pkg}`);
-    }
-
-    const { version } = JSON.parse(readFileSync(packagePath, "utf8")) as { version?: string };
-    if (!version || !RC_VERSION_RE.test(version)) {
-      nonRc.push(`${pkg}@${version ?? "unknown"}`);
-    }
-  }
-
-  if (nonRc.length > 0) {
-    throw new Error(
-      `Refusing to publish non-RC versions:\n${nonRc.map((v) => `- ${v}`).join("\n")}\n\nBump to rc versions first (for example, x.y.z-rc.N).`,
-    );
-  }
-}
 
 export const command = defineCommand({
   label: "Publish packages",
@@ -54,10 +24,6 @@ export const command = defineCommand({
     const registry = ctx.context.verdaccio
       ? process.env.VERDACCIO_REGISTRY || "http://localhost:4873/"
       : "https://registry.npmjs.org/";
-
-    if (!ctx.context.dryRun) {
-      assertRcVersions(PACKAGES);
-    }
 
     const whoamiResult = await $`npm whoami --registry ${registry}`.quiet().nothrow();
     if (whoamiResult.exitCode !== 0) {
