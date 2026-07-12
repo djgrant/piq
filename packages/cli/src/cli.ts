@@ -20,6 +20,7 @@ const USAGE = `Usage:
 Query options:
   --scan k=v        Constrain path params (repeatable, cheapest stage)
   --filter k=v      Equality-match loaded fields (repeatable)
+  --filter k~=v     Substring-match string fields (case-sensitive)
   --select a,b,c    Dot-paths to return (required for queries)
   --sort path[:desc]  Sort by dot-path (repeatable, asc default)
   --limit n         Cap result count (applied after sort)
@@ -149,7 +150,11 @@ export async function run(argv: string[]): Promise<number> {
   }
   for (const pair of values.filter ?? []) {
     const [key, value] = parsePair(pair, "filter")
-    query = query.filter({ [key]: coerceValue(value) })
+    if (key.endsWith("~")) {
+      query = query.filter({ [key.slice(0, -1)]: { contains: value } })
+    } else {
+      query = query.filter({ [key]: coerceValue(value) })
+    }
   }
   for (const sortSpec of values.sort ?? []) {
     const [sortPath, direction = "asc"] = sortSpec.split(":")
@@ -171,6 +176,12 @@ export async function run(argv: string[]): Promise<number> {
     AnyResolver,
     Record<string, unknown>
   >).exec()
+
+  if (rows.length === 0 && (values.scan?.length || values.filter?.length)) {
+    console.error(
+      "0 rows. --scan and --filter match values exactly; for substring matching use --filter 'key~=value'."
+    )
+  }
 
   if (values.table) {
     console.log(renderTable(rows))

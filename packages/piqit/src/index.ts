@@ -28,6 +28,8 @@ export type {
 
   // Query types
   QuerySpec,
+  FilterOperator,
+  FilterConstraints,
 
   // Resolver types
   Resolver,

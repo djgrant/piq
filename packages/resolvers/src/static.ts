@@ -29,6 +29,7 @@
  */
 
 import type { Resolver, StandardSchema } from "piqit"
+import { matchesConstraint } from "./filter.js"
 
 // =============================================================================
 // Filter Helpers
@@ -61,8 +62,8 @@ function defaultFilter<T>(item: T, filter: Partial<Record<string, unknown>>): bo
     return Object.keys(filter).length === 0
   }
 
-  for (const [key, value] of Object.entries(filter)) {
-    if (frontmatter[key] !== value) {
+  for (const [key, constraint] of Object.entries(filter)) {
+    if (!matchesConstraint(frontmatter[key], constraint)) {
       return false
     }
   }

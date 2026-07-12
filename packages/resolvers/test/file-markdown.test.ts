@@ -651,3 +651,65 @@ describe("fileMarkdown with optional path segments", () => {
     })
   })
 })
+
+// =============================================================================
+// Contains Filter
+// =============================================================================
+
+describe("contains filter", () => {
+  const messagesResolver = fileMarkdown({
+    base: path.join(import.meta.dir, "fixtures/messages"),
+    path: "{date}< {time}> - {from} - {subject} [{id}].md",
+    frontmatter: {
+      "~standard": {
+        version: 1,
+        vendor: "test",
+        validate: (value: unknown) => ({
+          value: value as { from: string; subject: string; summary: string },
+        }),
+      },
+    } satisfies StandardSchema<{ from: string; subject: string; summary: string }>,
+  })
+
+  test("substring-matches string frontmatter fields", async () => {
+    const results = await messagesResolver.resolve({
+      filter: { subject: { contains: "Kickoff" } },
+      select: ["params.id", "frontmatter.subject"],
+    })
+
+    expect(results.length).toBe(2) // timed and untimed fixture variants
+    expect(results.every((r) => r.frontmatter?.subject === "Kickoff notes")).toBe(true)
+  })
+
+  test("contains does not match non-substrings and stays case-sensitive", async () => {
+    const none = await messagesResolver.resolve({
+      filter: { subject: { contains: "kickoff" } },
+      select: ["params.id"],
+    })
+    expect(none.length).toBe(0)
+  })
+
+  test("substring-matches within string arrays", async () => {
+    const resolver = fileMarkdown({
+      base: FIXTURES_PATH,
+      path: "{year}/{slug}.md",
+      frontmatter: postFrontmatterSchema,
+    })
+
+    const results = await resolver.resolve({
+      filter: { tags: { contains: "tutorial" } } as never,
+      select: ["params.slug"],
+    })
+
+    expect(results.length).toBe(1)
+    expect(results[0].params?.slug).toBe("hello-world")
+  })
+
+  test("combines with equality filters", async () => {
+    const results = await messagesResolver.resolve({
+      filter: { from: "alice", subject: { contains: "notes" } },
+      select: ["params.id"],
+    })
+    expect(results.length).toBe(2)
+  })
+})

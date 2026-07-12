@@ -9,6 +9,7 @@ import type {
   StandardSchema,
   Infer,
   QuerySpec,
+  FilterConstraints,
   SelectablePaths,
   HasCollision,
   Undot,
@@ -83,7 +84,7 @@ export class QueryBuilder<
 > {
   private resolver: TResolver
   private _scanConstraints?: Partial<ResolverScan<TResolver>>
-  private _filterConstraints?: Partial<ResolverFilter<TResolver>>
+  private _filterConstraints?: FilterConstraints<ResolverFilter<TResolver>>
   private _selectPaths?: string[]
   private _selectAliases?: Record<string, string>
   private _sortKeys?: SortKey[]
@@ -113,12 +114,17 @@ export class QueryBuilder<
   // ===========================================================================
 
   /**
-   * Set filter constraints to further narrow results.
+   * Set filter constraints to further narrow results. Values are exact
+   * matches, or operator objects: { contains: '...' } substring-matches
+   * string fields (and string-array elements), case-sensitively.
    *
-   * @param constraints - Partial filter parameters
+   * @param constraints - Filter parameters
    * @returns This builder for chaining
+   *
+   * @example
+   * query.filter({ status: 'published', subject: { contains: 'Rule 30' } })
    */
-  filter(constraints: Partial<ResolverFilter<TResolver>>): this {
+  filter(constraints: FilterConstraints<ResolverFilter<TResolver>>): this {
     this._filterConstraints = { ...this._filterConstraints, ...constraints }
     return this
   }

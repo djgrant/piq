@@ -15,6 +15,7 @@ import {
   readFrontmatterPickStrict,
   type FrontmatterParseOptions,
 } from "./frontmatter.js"
+import { matchesFilter } from "./filter.js"
 import {
   parseMarkdownBody,
   type BodyOptions,
@@ -191,22 +192,6 @@ function getNeededBodyParts(selectPaths: string[]): BodyOptions {
   }
 
   return result
-}
-
-/**
- * Check if filter constraints match frontmatter.
- * Simple equality check for now.
- */
-function matchesFilter(
-  frontmatter: Record<string, unknown>,
-  filter: Record<string, unknown>
-): boolean {
-  for (const [key, value] of Object.entries(filter)) {
-    if (frontmatter[key] !== value) {
-      return false
-    }
-  }
-  return true
 }
 
 function getFrontmatterKeys(selectPaths: string[], filter?: Record<string, unknown>): {

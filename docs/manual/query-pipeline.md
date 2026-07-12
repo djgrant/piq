@@ -12,7 +12,7 @@ description: How piq's layered query chain works
 The query builder uses four stages:
 
 1. `scan()` narrows the candidate set with path-derived parameters. This is the cheapest stage.
-2. `filter()` applies equality checks to resolved data such as frontmatter fields. This stage requires loading candidates.
+2. `filter()` checks resolved data such as frontmatter fields. This stage requires loading candidates.
 3. `select()` declares which fields to extract and which namespaces to materialize.
 4. `exec()` or `stream()` executes the query and returns rows.
 
@@ -56,6 +56,14 @@ Fix collisions with aliases:
   routeTitle: 'params.title',
   postTitle: 'frontmatter.title',
 })
+```
+
+## Filter Operators
+
+Filter values match exactly by default. Pass `{ contains: '...' }` to substring-match a string field instead; on string-array fields it matches when any element contains the needle. Matching is case-sensitive.
+
+```typescript
+.filter({ status: 'published', subject: { contains: 'Rule 30' } })
 ```
 
 ## Sorting and Limiting

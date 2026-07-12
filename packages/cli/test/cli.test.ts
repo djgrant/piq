@@ -107,3 +107,27 @@ describe("piq CLI", () => {
     expect(stderr).toContain("piq notes --schema")
   })
 })
+
+describe("contains filter and empty-result hint", () => {
+  test("--filter k~=v substring-matches", async () => {
+    const { stdout, exitCode } = await runCli([
+      "notes",
+      "--filter", "title~=Note",
+      "--select", "params.slug",
+    ])
+    expect(exitCode).toBe(0)
+    expect(stdout.trim().split("\n").length).toBe(3)
+  })
+
+  test("zero rows from constrained query hints at substring matching", async () => {
+    const { stdout, stderr, exitCode } = await runCli([
+      "notes",
+      "--filter", "title=Note",
+      "--select", "params.slug",
+    ])
+    expect(exitCode).toBe(0)
+    expect(stdout.trim()).toBe("")
+    expect(stderr).toContain("match values exactly")
+    expect(stderr).toContain("key~=value")
+  })
+})

@@ -476,3 +476,35 @@ describe("Error handling", () => {
     ).rejects.toThrow("Query execution requires .select(...)")
   })
 })
+
+// =============================================================================
+// Filter Constraints
+// =============================================================================
+
+describe("filter constraints", () => {
+  test("operator objects pass through to the resolver spec unchanged", async () => {
+    let receivedFilter: unknown
+    const resolver: Resolver<
+      StandardSchema<{}>,
+      StandardSchema<{ title: string }>,
+      StandardSchema<{ params: { slug: string } }>
+    > = {
+      schema: {
+        scanParams: createSchema<{}>(),
+        filterParams: createSchema<{ title: string }>(),
+        result: createSchema<{ params: { slug: string } }>(),
+      },
+      async resolve(spec) {
+        receivedFilter = spec.filter
+        return []
+      },
+    }
+
+    await from(resolver)
+      .filter({ title: { contains: "Rule 30" } })
+      .select("params.slug")
+      .exec()
+
+    expect(receivedFilter).toEqual({ title: { contains: "Rule 30" } })
+  })
+})

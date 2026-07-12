@@ -45,7 +45,7 @@ const posts = fileMarkdown({
 
 - Requires Bun runtime.
 - Scan values come from path placeholders.
-- Filter checks frontmatter equality.
+- Filter checks frontmatter fields: exact match, or substring via `{ contains: '...' }`.
 
 Use `fileMarkdown` in Bun-based server and build contexts.
 

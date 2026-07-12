@@ -67,6 +67,24 @@ export type {
 import type { SelectablePaths } from "./select-types.js"
 
 // =============================================================================
+// Filter Constraints
+// =============================================================================
+
+/**
+ * Operator form of a filter constraint. `contains` substring-matches string
+ * fields, and matches string-array fields when any element contains the
+ * needle. Matching is case-sensitive.
+ */
+export type FilterOperator = { contains: string }
+
+/**
+ * A filter value: either an exact value or an operator object.
+ */
+export type FilterConstraints<T> = {
+  [K in keyof T]?: T[K] | FilterOperator
+}
+
+// =============================================================================
 // QuerySpec
 // =============================================================================
 
@@ -87,8 +105,9 @@ export interface QuerySpec<TScan, TFilter, TSelect extends string> {
   /**
    * Parameters for filtering scanned items.
    * Applied after scan to further reduce the result set.
+   * Values are exact matches or operator objects such as { contains: '...' }.
    */
-  filter?: Partial<TFilter>
+  filter?: FilterConstraints<TFilter>
 
   /**
    * Fields to include in the result using dot-notation paths.
