@@ -14,7 +14,7 @@
   "packageManager": "pnpm@11.6.0",
   "scripts": {
     "typecheck": "pnpm --filter piqit --filter @piqit/resolvers --filter @piqit/cli exec tsc --noEmit",
-    "build": "pnpm --filter piqit --filter @piqit/resolvers --filter @piqit/cli exec tsc && node ./scripts/smoke-node-esm-artifacts.mjs",
+    "build": "pnpm --filter piqit exec tsc && pnpm --filter @piqit/resolvers exec tsc && pnpm --filter @piqit/cli exec tsc && node ./scripts/smoke-node-esm-artifacts.mjs",
     "test": "bun test"
   },
   "workspaces": [

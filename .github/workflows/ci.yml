@@ -34,11 +34,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
-        run: pnpm run typecheck
-
+      # Build first: resolvers/cli resolve `piqit` through its emitted
+      # dist/*.d.ts, so the typecheck pass needs the declarations to exist.
       - name: Build
         run: pnpm run build
+
+      - name: Typecheck
+        run: pnpm run typecheck
 
       - name: Run tests
         run: pnpm run test
