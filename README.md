@@ -53,11 +53,7 @@ This repo ships two published packages:
 | `@piqit/resolvers` | Resolver implementations and content parsing helpers | `@piqit/resolvers`, `@piqit/resolvers/edge`, `@piqit/resolvers/static` |
 | `@piqit/cli` | `piq` command-line interface for querying collections declared in `piq.config.ts` | `@piqit/cli`, `piq` bin |
 
-Workspace apps (not published packages):
-
-- `docs` - VitePress documentation
-- `playground` - Bun playground and examples
-- `website` - Astro site surface
+The `docs` directory holds the documentation source, which is published from a separate repository.
 
 ## Quick Start
 

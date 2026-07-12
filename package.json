@@ -18,10 +18,7 @@
     "test": "bun test"
   },
   "workspaces": [
-    "packages/*",
-    "playground",
-    "website",
-    "docs"
+    "packages/*"
   ],
   "devDependencies": {
     "@pokit/core": "0.1.0",
@@ -35,7 +32,6 @@
     "zod": "^4.3.6"
   },
   "dependencies": {
-    "wrangler": "^4.50.0",
     "yaml": "^2.8.2"
   }
 }

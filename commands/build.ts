@@ -1,7 +1,7 @@
 import { defineCommand } from "@pokit/core";
 
 export const command = defineCommand({
-  label: "Build workspace packages and sites",
+  label: "Build workspace packages",
   run: async (r) => {
     await r.group("Build workspace", { layout: "sequence" }, async (g) => {
       await g.activity("Build piqit package", async () => {
@@ -18,14 +18,6 @@ export const command = defineCommand({
 
       await g.activity("Smoke test package artifacts", async () => {
         await r.exec("node ./scripts/smoke-node-esm-artifacts.mjs");
-      });
-
-      await g.activity("Build docs", async () => {
-        await r.exec("pnpm exec vitepress build", { cwd: "docs" });
-      });
-
-      await g.activity("Build website", async () => {
-        await r.exec("pnpm exec astro build", { cwd: "website" });
       });
     });
 
