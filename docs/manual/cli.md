@@ -74,8 +74,6 @@ piq posts \
 
 ## Output
 
-A constrained query returning zero rows prints a reminder to stderr that `--scan` and `--filter` match exactly, pointing at `~=` for substring matching.
-
 Rows print as JSON lines by default, one object per line, so results pipe cleanly into `jq` or another process. `--json` prints a single array. `--table` prints aligned columns for reading in a terminal.
 
 ```

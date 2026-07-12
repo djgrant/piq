@@ -177,12 +177,6 @@ export async function run(argv: string[]): Promise<number> {
     Record<string, unknown>
   >).exec()
 
-  if (rows.length === 0 && (values.scan?.length || values.filter?.length)) {
-    console.error(
-      "0 rows. --scan and --filter match values exactly; for substring matching use --filter 'key~=value'."
-    )
-  }
-
   if (values.table) {
     console.log(renderTable(rows))
   } else if (values.json) {

@@ -108,7 +108,7 @@ describe("piq CLI", () => {
   })
 })
 
-describe("contains filter and empty-result hint", () => {
+describe("contains filter", () => {
   test("--filter k~=v substring-matches", async () => {
     const { stdout, exitCode } = await runCli([
       "notes",
@@ -119,7 +119,7 @@ describe("contains filter and empty-result hint", () => {
     expect(stdout.trim().split("\n").length).toBe(3)
   })
 
-  test("zero rows from constrained query hints at substring matching", async () => {
+  test("zero rows is a clean empty result, no stderr noise", async () => {
     const { stdout, stderr, exitCode } = await runCli([
       "notes",
       "--filter", "title=Note",
@@ -127,7 +127,6 @@ describe("contains filter and empty-result hint", () => {
     ])
     expect(exitCode).toBe(0)
     expect(stdout.trim()).toBe("")
-    expect(stderr).toContain("match values exactly")
-    expect(stderr).toContain("key~=value")
+    expect(stderr.trim()).toBe("")
   })
 })
