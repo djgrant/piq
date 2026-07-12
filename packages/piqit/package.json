@@ -12,7 +12,6 @@
   },
   "files": ["dist"],
   "devDependencies": {
-    "@piqit/resolvers": "workspace:*",
     "@types/bun": "latest",
     "typescript": "^5.8.3"
   }

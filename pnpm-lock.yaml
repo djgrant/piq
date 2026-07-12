@@ -56,11 +56,23 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  packages/piqit:
+  packages/integration:
     devDependencies:
       '@piqit/resolvers':
         specifier: workspace:*
         version: link:../resolvers
+      '@types/bun':
+        specifier: latest
+        version: 1.3.14
+      piqit:
+        specifier: workspace:*
+        version: link:../piqit
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/piqit:
+    devDependencies:
       '@types/bun':
         specifier: latest
         version: 1.3.14

@@ -1,0 +1,13 @@
+{
+  "name": "@piqit/integration-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "devDependencies": {
+    "piqit": "workspace:*",
+    "@piqit/resolvers": "workspace:*",
+    "@types/bun": "latest",
+    "typescript": "^5.8.3"
+  }
+}

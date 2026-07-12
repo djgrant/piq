@@ -5,9 +5,9 @@
  * Run with: bun run --bun tsc --noEmit
  */
 
-import { piq, from } from "../src"
+import { piq, from } from "piqit"
 import { fileMarkdown } from "@piqit/resolvers"
-import type { StandardSchema } from "../src/types"
+import type { StandardSchema } from "piqit"
 
 // =============================================================================
 // Test Schema Setup
