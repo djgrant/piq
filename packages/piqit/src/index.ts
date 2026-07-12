@@ -31,6 +31,7 @@ export type {
 
   // Resolver types
   Resolver,
+  ResolverMeta,
 } from "./types.js"
 
 // =============================================================================
@@ -38,6 +39,7 @@ export type {
 // =============================================================================
 
 export { QueryBuilder, SingleQueryBuilder, from } from "./query.js"
+export type { SortDirection } from "./query.js"
 
 // =============================================================================
 // Undotting Utilities

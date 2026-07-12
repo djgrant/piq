@@ -33,6 +33,40 @@ type ResolverFilter<R> = R extends Resolver<any, infer TFilter, any>
   ? Infer<TFilter>
   : never
 
+/** Concrete (non-wildcard) selectable paths, usable as sort keys */
+type SortablePaths<R> = Exclude<SelectablePaths<ResolverResult<R>>, `${string}.*`>
+
+/** Sort direction */
+export type SortDirection = "asc" | "desc"
+
+interface SortKey {
+  path: string
+  direction: SortDirection
+}
+
+/** Read a dot-path value from a namespaced record */
+function getPathValue(record: Record<string, unknown>, path: string): unknown {
+  let value: unknown = record
+  for (const segment of path.split(".")) {
+    if (value == null || typeof value !== "object") return undefined
+    value = (value as Record<string, unknown>)[segment]
+  }
+  return value
+}
+
+/**
+ * Compare two values for sorting. Numbers and dates compare numerically,
+ * everything else compares as strings. Undefined/null sort last.
+ */
+function compareValues(a: unknown, b: unknown): number {
+  if (a == null && b == null) return 0
+  if (a == null) return 1
+  if (b == null) return -1
+  if (typeof a === "number" && typeof b === "number") return a - b
+  if (a instanceof Date && b instanceof Date) return a.getTime() - b.getTime()
+  return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0
+}
+
 // =============================================================================
 // QueryBuilder
 // =============================================================================
@@ -52,6 +86,8 @@ export class QueryBuilder<
   private _filterConstraints?: Partial<ResolverFilter<TResolver>>
   private _selectPaths?: string[]
   private _selectAliases?: Record<string, string>
+  private _sortKeys?: SortKey[]
+  private _limit?: number
 
   constructor(resolver: TResolver) {
     this.resolver = resolver
@@ -84,6 +120,42 @@ export class QueryBuilder<
    */
   filter(constraints: Partial<ResolverFilter<TResolver>>): this {
     this._filterConstraints = { ...this._filterConstraints, ...constraints }
+    return this
+  }
+
+  // ===========================================================================
+  // Sort & Limit
+  // ===========================================================================
+
+  /**
+   * Sort results by a dot-path. Chain multiple calls for multi-key sorts;
+   * earlier keys take precedence. Sort keys don't need to be selected—the
+   * resolver materializes them for ordering, but they're stripped from rows
+   * unless also in the select.
+   *
+   * @param path - Concrete dot-path to sort by (wildcards not allowed)
+   * @param direction - 'asc' (default) or 'desc'
+   * @returns This builder for chaining
+   *
+   * @example
+   * query.sort('params.date', 'desc').sort('frontmatter.title')
+   */
+  sort(path: SortablePaths<TResolver>, direction: SortDirection = "asc"): this {
+    this._sortKeys = [...(this._sortKeys || []), { path: path as string, direction }]
+    return this
+  }
+
+  /**
+   * Limit the number of results, applied after sorting.
+   *
+   * @param count - Maximum number of rows to return
+   * @returns This builder for chaining
+   */
+  limit(count: number): this {
+    if (!Number.isInteger(count) || count < 0) {
+      throw new Error(`limit() requires a non-negative integer, got ${count}`)
+    }
+    this._limit = count
     return this
   }
 
@@ -127,6 +199,8 @@ export class QueryBuilder<
     const newBuilder = new QueryBuilder<TResolver, any>(this.resolver)
     newBuilder._scanConstraints = this._scanConstraints
     newBuilder._filterConstraints = this._filterConstraints
+    newBuilder._sortKeys = this._sortKeys
+    newBuilder._limit = this._limit
 
     if (args.length === 1 && typeof args[0] === "object" && !Array.isArray(args[0])) {
       // Object form (aliases)
@@ -157,6 +231,10 @@ export class QueryBuilder<
 
     const selectPaths = this.getSelectPaths()
 
+    // Sort keys must be materialized by the resolver even when not selected
+    const sortPaths = (this._sortKeys || []).map((k) => k.path)
+    const resolvePaths = [...new Set([...selectPaths, ...sortPaths])]
+
     const spec: QuerySpec<
       ResolverScan<TResolver>,
       ResolverFilter<TResolver>,
@@ -164,10 +242,28 @@ export class QueryBuilder<
     > = {
       scan: this._scanConstraints,
       filter: this._filterConstraints,
-      select: selectPaths,
+      select: resolvePaths,
     }
 
-    const rawResults = await this.resolver.resolve(spec as any)
+    let rawResults = await this.resolver.resolve(spec as any)
+
+    if (this._sortKeys?.length) {
+      const keys = this._sortKeys
+      rawResults = [...rawResults].sort((a, b) => {
+        for (const { path, direction } of keys) {
+          const cmp = compareValues(
+            getPathValue(a as Record<string, unknown>, path),
+            getPathValue(b as Record<string, unknown>, path)
+          )
+          if (cmp !== 0) return direction === "desc" ? -cmp : cmp
+        }
+        return 0
+      })
+    }
+
+    if (this._limit !== undefined) {
+      rawResults = rawResults.slice(0, this._limit)
+    }
 
     // Transform results based on select mode
     if (this._selectAliases) {

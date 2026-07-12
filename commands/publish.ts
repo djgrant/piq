@@ -3,12 +3,13 @@ import { $ } from "bun";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 
-const PACKAGES = ["piqit", "@piqit/resolvers"] as const;
+const PACKAGES = ["piqit", "@piqit/resolvers", "@piqit/cli"] as const;
 const RC_VERSION_RE = /-rc(?:\.|$)/i;
 
 const PACKAGE_PATHS: Record<string, string> = {
   piqit: "packages/piqit/package.json",
   "@piqit/resolvers": "packages/resolvers/package.json",
+  "@piqit/cli": "packages/cli/package.json",
 };
 
 function assertRcVersions(packages: readonly string[]) {

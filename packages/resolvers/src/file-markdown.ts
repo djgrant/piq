@@ -293,7 +293,26 @@ export function fileMarkdown<
     >
   >
 
+  // Frontmatter keys are introspectable when the schema is a Zod object
+  // (StandardSchema itself has no field enumeration)
+  const frontmatterShape = (options.frontmatter as { shape?: Record<string, unknown> }).shape
+  const filterKeys = frontmatterShape ? Object.keys(frontmatterShape) : undefined
+
+  const selectPaths = [
+    ...pattern.paramNames.map((name) => `params.${name}`),
+    ...(filterKeys?.map((key) => `frontmatter.${key}`) ?? ["frontmatter.*"]),
+    ...(["raw", "html", "headings"] as const)
+      .filter((part) => bodyOptions[part])
+      .map((part) => `body.${part}`),
+  ]
+
   return {
+    meta: {
+      scanKeys: [...pattern.paramNames],
+      filterKeys,
+      selectPaths,
+    },
+
     schema: {
       scanParams: scanSchema,
       filterParams: options.frontmatter,
@@ -311,16 +330,20 @@ export function fileMarkdown<
         >
       > = []
 
-      // 1. Generate glob pattern from scan constraints
-      const globPattern = pattern.toGlob(spec.scan as Record<string, unknown>)
+      // 1. Generate glob variants from scan constraints (optional path
+      //    segments produce multiple globs)
+      const scanConstraints = spec.scan as Record<string, unknown> | undefined
+      const globPatterns = pattern.toGlobs(scanConstraints)
 
-      // 2. Find matching files using Bun.Glob
-      const glob = new Bun.Glob(globPattern)
-      const files: string[] = []
-
-      for await (const file of glob.scan({ cwd: basePath, absolute: false })) {
-        files.push(file)
+      // 2. Find matching files using Bun.Glob, deduped across variants
+      const fileSet = new Set<string>()
+      for (const globPattern of globPatterns) {
+        const glob = new Bun.Glob(globPattern)
+        for await (const file of glob.scan({ cwd: basePath, absolute: false })) {
+          fileSet.add(file)
+        }
       }
+      const files = [...fileSet]
 
       // 3. Determine what we need to read
       const wantParams = needsParams(spec.select)
@@ -338,6 +361,19 @@ export function fileMarkdown<
         // Extract params from path
         const params = pattern.match(relativePath)
         if (!params) continue
+
+        // Variant globs can over-match, so re-verify scan constraints
+        // against the extracted params
+        if (scanConstraints) {
+          let mismatch = false
+          for (const [key, value] of Object.entries(scanConstraints)) {
+            if (value !== undefined && value !== null && params[key] !== String(value)) {
+              mismatch = true
+              break
+            }
+          }
+          if (mismatch) continue
+        }
 
         const fullPath = path.join(basePath, relativePath)
 

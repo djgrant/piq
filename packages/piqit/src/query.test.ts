@@ -335,6 +335,90 @@ describe("QueryBuilder", () => {
     expect(results[1]).toEqual({ slug: "third-post" })
   })
 
+  test("sort orders results ascending by default", async () => {
+    const results = await from(resolver)
+      .sort("frontmatter.title")
+      .select("frontmatter.title")
+      .exec()
+
+    expect(results.map((r) => r.title)).toEqual([
+      "Hello World",
+      "Second Post",
+      "Third Post",
+    ])
+  })
+
+  test("sort desc reverses order", async () => {
+    const results = await from(resolver)
+      .sort("params.slug", "desc")
+      .select("params.slug")
+      .exec()
+
+    expect(results.map((r) => r.slug)).toEqual([
+      "third-post",
+      "second-post",
+      "hello-world",
+    ])
+  })
+
+  test("chained sorts apply in precedence order", async () => {
+    const results = await from(resolver)
+      .sort("params.year", "desc")
+      .sort("params.slug")
+      .select("params.slug", "params.year")
+      .exec()
+
+    expect(results.map((r) => `${r.year}/${r.slug}`)).toEqual([
+      "2025/third-post",
+      "2024/hello-world",
+      "2024/second-post",
+    ])
+  })
+
+  test("sort key does not need to be selected", async () => {
+    const results = await from(resolver)
+      .sort("frontmatter.title", "desc")
+      .select("params.slug")
+      .exec()
+
+    expect(results.map((r) => r.slug)).toEqual([
+      "third-post",
+      "second-post",
+      "hello-world",
+    ])
+    // Sort key is stripped from the flattened rows
+    expect(results[0]).toEqual({ slug: "third-post" })
+  })
+
+  test("sort survives select's new builder", async () => {
+    const results = await from(resolver)
+      .select("params.slug")
+      .exec()
+    expect(results).toHaveLength(3)
+
+    const sorted = await from(resolver)
+      .sort("params.slug", "desc")
+      .limit(1)
+      .select("params.slug")
+      .exec()
+    expect(sorted).toEqual([{ slug: "third-post" }])
+  })
+
+  test("limit caps result count after sort", async () => {
+    const results = await from(resolver)
+      .sort("params.slug")
+      .limit(2)
+      .select("params.slug")
+      .exec()
+
+    expect(results.map((r) => r.slug)).toEqual(["hello-world", "second-post"])
+  })
+
+  test("limit rejects invalid counts", () => {
+    expect(() => from(resolver).limit(-1)).toThrow("non-negative integer")
+    expect(() => from(resolver).limit(1.5)).toThrow("non-negative integer")
+  })
+
   test("select creates new builder for immutability", async () => {
     const base = from(resolver)
     const withFilter = base.filter({ draft: false })

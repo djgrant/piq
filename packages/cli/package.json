@@ -1,0 +1,28 @@
+{
+  "name": "@piqit/cli",
+  "version": "0.0.11-rc.11",
+  "type": "module",
+  "license": "MIT",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "piq": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "dependencies": {
+    "piqit": "workspace:*"
+  },
+  "devDependencies": {
+    "@piqit/resolvers": "workspace:*",
+    "@types/bun": "latest",
+    "typescript": "^5.8.3"
+  }
+}

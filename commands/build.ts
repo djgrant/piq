@@ -12,6 +12,10 @@ export const command = defineCommand({
         await r.exec("pnpm exec tsc", { cwd: "packages/resolvers" });
       });
 
+      await g.activity("Build cli package", async () => {
+        await r.exec("pnpm exec tsc", { cwd: "packages/cli" });
+      });
+
       await g.activity("Smoke test package artifacts", async () => {
         await r.exec("node ./scripts/smoke-node-esm-artifacts.mjs");
       });

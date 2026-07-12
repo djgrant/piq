@@ -58,6 +58,24 @@ Fix collisions with aliases:
 })
 ```
 
+## Sorting and Limiting
+
+`sort()` orders results by a concrete dot-path. `limit()` caps the row count after sorting.
+
+```typescript
+// The five most recent published posts
+.filter({ status: 'published' })
+.sort('params.date', 'desc')
+.limit(5)
+.select('params.slug', 'frontmatter.title')
+```
+
+- Direction is `'asc'` by default.
+- Chain `sort()` calls for multi-key sorts; earlier keys take precedence.
+- A sort key does not need to appear in the select. The resolver materialises it for ordering, then the row is flattened from the select paths alone.
+- Wildcard paths such as `frontmatter.*` are not valid sort keys.
+- Numbers and dates compare numerically; everything else compares as strings. Missing values sort last.
+
 ## Execution Notes
 
 - `select()` is required before `exec()`. Missing select throws at runtime.

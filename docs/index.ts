@@ -29,6 +29,13 @@ export const categories: DocCategory[] = [
           { label: "Resolvers", slug: "manual/resolvers" },
         ],
       },
+      {
+        heading: "CLI",
+        icon: "terminal",
+        links: [
+          { label: "CLI", slug: "manual/cli" },
+        ],
+      },
     ],
   },
   {
@@ -41,6 +48,7 @@ export const categories: DocCategory[] = [
         links: [
           { label: "piqit", slug: "packages/piqit" },
           { label: "@piqit/resolvers", slug: "packages/resolvers" },
+          { label: "@piqit/cli", slug: "packages/cli" },
         ],
       },
     ],

@@ -52,6 +52,7 @@ const rows = await piq
 
 - `select()` is required before execution.
 - `scan()` and `filter()` merge constraints across repeated calls.
+- `sort(path, direction?)` orders rows and `limit(n)` caps them; both run after resolution, before flattening.
 - `single()` wraps a query for first-row access (`exec`, `execOrThrow`).
 - `stream()` currently emits from an already-resolved result array.
 

@@ -49,6 +49,28 @@ const posts = fileMarkdown({
 
 Use `fileMarkdown` in Bun-based server and build contexts.
 
+### Path Pattern Syntax
+
+Patterns support three constructs:
+
+| Construct | Meaning |
+| --- | --- |
+| `{param}` | Named placeholder, matched non-greedily within a path segment |
+| `{param:\\d+}` | Placeholder with an inline regex constraint |
+| `<...>` | Optional segment; its params become optional |
+
+Optional segments handle collections where filenames vary in structure. A pattern such as:
+
+```typescript
+path: '{date}< {time}> - {from} - {subject} [{id}].md'
+```
+
+matches both `2024-01-05 - alice - Kickoff notes [abc123].md` and `2024-01-05 09-30-00 - alice - Kickoff notes [abc123].md`. When the segment is absent, its params are omitted from the extracted values.
+
+- Scanning on a param inside an optional segment only matches files that include the segment.
+- Literal characters that are special in globs, such as the square brackets around `[{id}]`, are escaped automatically.
+- Optional segments cannot be nested.
+
 ## `staticContent`
 
 `staticContent` wraps a pre-compiled dataset in memory. It performs no filesystem or network I/O.

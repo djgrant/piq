@@ -4,6 +4,7 @@ import { versionBump } from "bumpp";
 const PACKAGE_FILES = [
   "packages/piqit/package.json",
   "packages/resolvers/package.json",
+  "packages/cli/package.json",
 ];
 
 export const command = defineCommand({

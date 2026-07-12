@@ -10,6 +10,7 @@ const entrypointsByTarget = {
     "packages/resolvers/dist/edge.js",
     "packages/resolvers/dist/static.js",
   ],
+  cli: ["packages/cli/dist/index.js"],
 }
 
 const requestedTargets = process.argv.slice(2)

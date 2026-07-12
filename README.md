@@ -41,6 +41,7 @@ The docs are organized into three sections that match the docs site structure.
 - [Packages Overview](docs/packages/index.md)
 - [`piqit`](docs/packages/piqit.md)
 - [`@piqit/resolvers`](docs/packages/resolvers.md)
+- [`@piqit/cli`](docs/packages/cli.md)
 
 ## Packages
 
@@ -50,6 +51,7 @@ This repo ships two published packages:
 | --- | --- | --- |
 | `piqit` | Core fluent query builder, select typing, and flattening utilities | `piqit` |
 | `@piqit/resolvers` | Resolver implementations and content parsing helpers | `@piqit/resolvers`, `@piqit/resolvers/edge`, `@piqit/resolvers/static` |
+| `@piqit/cli` | `piq` command-line interface for querying collections declared in `piq.config.ts` | `@piqit/cli`, `piq` bin |
 
 Workspace apps (not published packages):
 

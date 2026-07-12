@@ -106,6 +106,60 @@ describe("compilePattern", () => {
     })
   })
 
+  test("optional segment params are extracted when present, omitted when absent", () => {
+    const pattern = compilePattern("{date}< {time}> - {slug}.md")
+    expect(pattern.paramNames).toEqual(["date", "time", "slug"])
+    expect(pattern.match("2024-01-05 09-30-00 - hello.md")).toEqual({
+      date: "2024-01-05",
+      time: "09-30-00",
+      slug: "hello",
+    })
+    expect(pattern.match("2024-01-05 - hello.md")).toEqual({
+      date: "2024-01-05",
+      slug: "hello",
+    })
+  })
+
+  test("toGlobs enumerates optional segment variants", () => {
+    const pattern = compilePattern("{date}< {time}> - {slug}.md")
+    expect(pattern.toGlobs().sort()).toEqual(["* * - *.md", "* - *.md"])
+  })
+
+  test("toGlobs prunes variants that omit a constrained param", () => {
+    const pattern = compilePattern("{date}< {time}> - {slug}.md")
+    expect(pattern.toGlobs({ time: "09-30-00" })).toEqual(["* 09-30-00 - *.md"])
+  })
+
+  test("toGlob throws when optional segments produce multiple variants", () => {
+    const pattern = compilePattern("{date}< {time}> - {slug}.md")
+    expect(() => pattern.toGlob()).toThrow("toGlobs()")
+  })
+
+  test("build omits optional segment when its params are missing", () => {
+    const pattern = compilePattern("{date}< {time}> - {slug}.md")
+    expect(pattern.build({ date: "2024-01-05", slug: "hello" })).toBe(
+      "2024-01-05 - hello.md"
+    )
+    expect(pattern.build({ date: "2024-01-05", time: "09-30-00", slug: "hello" })).toBe(
+      "2024-01-05 09-30-00 - hello.md"
+    )
+  })
+
+  test("escapes glob special characters in literals and constrained values", () => {
+    const pattern = compilePattern("{date} - {from} [{id}].md")
+    expect(pattern.toGlobs()).toEqual(["* - * \\[*\\].md"])
+    expect(pattern.match("2024-01-05 - alice [abc123].md")).toEqual({
+      date: "2024-01-05",
+      from: "alice",
+      id: "abc123",
+    })
+  })
+
+  test("rejects unclosed and nested optional segments", () => {
+    expect(() => compilePattern("{date}< {time} - {slug}.md")).toThrow("Unclosed")
+    expect(() => compilePattern("{a}<b<c>>.md")).toThrow("Nested")
+  })
+
   test("matches TASK-style filename params with hyphenated title", () => {
     const pattern = compilePattern("TASK-{num}-{title}.md")
     expect(pattern.match("TASK-123-title-which-may-include-hyphens.md")).toEqual({
@@ -528,5 +582,72 @@ describe("resolver with full query spec", () => {
     expect(post.frontmatter?.tags).toEqual(["intro", "tutorial"])
     expect(post.body?.headings).toBeDefined()
     expect(post.body?.headings?.[0].text).toBe("Welcome to My Blog")
+  })
+})
+
+// =============================================================================
+// Optional Path Segments (integration)
+// =============================================================================
+
+describe("fileMarkdown with optional path segments", () => {
+  interface MessageFrontmatter {
+    from: string
+    subject: string
+    summary: string
+  }
+
+  const messageSchema: StandardSchema<MessageFrontmatter> = {
+    "~standard": {
+      version: 1,
+      vendor: "test",
+      validate: (value) => ({ value: value as MessageFrontmatter }),
+    },
+  }
+
+  const resolver = fileMarkdown({
+    base: path.join(import.meta.dir, "fixtures/messages"),
+    path: "{date}< {time}> - {from} - {subject} [{id}].md",
+    frontmatter: messageSchema,
+  })
+
+  test("matches both timed and untimed filenames, deduped across glob variants", async () => {
+    const results = await resolver.resolve({
+      select: ["params.date", "params.time", "params.id"],
+    })
+
+    // 3 files on disk; broad and narrow glob variants must not double-count
+    expect(results.length).toBe(3)
+
+    const timed = results.filter((r) => r.params?.time !== undefined)
+    expect(timed.length).toBe(2)
+  })
+
+  test("scan on a param verifies extracted values against over-matching globs", async () => {
+    const results = await resolver.resolve({
+      scan: { date: "2024-02-10" },
+      select: ["params.id", "frontmatter.summary"],
+    })
+
+    expect(results.length).toBe(1)
+    expect(results[0].params?.id).toBe("def456")
+    expect(results[0].frontmatter?.summary).toBe(
+      "Summary of the February retrospective."
+    )
+  })
+
+  test("scan on optional param only matches files that include it", async () => {
+    const results = await resolver.resolve({
+      scan: { time: "09-30-00" },
+      select: ["params.date", "params.time"],
+    })
+
+    expect(results.length).toBe(1)
+    expect(results[0].params).toEqual({
+      date: "2024-01-05",
+      time: "09-30-00",
+      from: "alice",
+      subject: "Kickoff notes",
+      id: "abc123",
+    })
   })
 })

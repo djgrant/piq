@@ -16,14 +16,21 @@ import { StandardSchema } from "piqit";
 
 /**
  * Extract params from a path pattern string at the type level.
+ * Params inside `<...>` optional segments become optional properties.
  *
  * @example
  * type Params = ExtractParams<'{year}/{slug}.md'>
  * // = { year: string } & { slug: string }
+ *
+ * type Params = ExtractParams<'{date}< {time}> {slug}.md'>
+ * // = { date: string } & { time?: string } & { slug: string }
  */
-export type ExtractParams<P extends string> = P extends `${string}{${infer Param}}${infer Rest}`
-  ? { [K in ExtractParamName<Param>]: string } & ExtractParams<Rest>
-  : {}
+export type ExtractParams<P extends string> =
+  P extends `${infer Head}<${infer Opt}>${infer Rest}`
+    ? ExtractParams<Head> & Partial<ExtractParams<Opt>> & ExtractParams<Rest>
+    : P extends `${string}{${infer Param}}${infer Rest}`
+      ? { [K in ExtractParamName<Param>]: string } & ExtractParams<Rest>
+      : {}
 
 type ExtractParamName<T extends string> = T extends `${infer Name}:${string}` ? Name : T
 
@@ -69,7 +76,19 @@ export interface CompiledPattern {
   toGlob(constraints?: Record<string, unknown>): string
 
   /**
+   * Generate all glob variants for a pattern with optional segments.
+   * Each `<...>` segment doubles the variants (present/absent); variants
+   * that omit a constrained param are pruned. Patterns without optional
+   * segments yield a single glob.
+   *
+   * @param constraints - Optional param values to use instead of wildcards
+   * @returns Deduplicated glob pattern strings
+   */
+  toGlobs(constraints?: Record<string, unknown>): string[]
+
+  /**
    * Match a path against this pattern and extract params.
+   * Params in unmatched optional segments are omitted from the result.
    *
    * @param path - The file path to match (relative to base)
    * @returns The extracted params, or null if no match
@@ -108,7 +127,73 @@ const PARAM_REGEX = /\{([a-zA-Z_][a-zA-Z0-9_]*)(?::([^{}]+))?\}/g
 const REGEX_ESCAPE = /[.*+?^${}()|[\]\\]/g
 
 /**
+ * Characters with special meaning in glob patterns.
+ * Literal text is escaped so paths containing e.g. `[id]` match verbatim.
+ */
+const GLOB_ESCAPE = /[*?[\]{}()!\\]/g
+
+type PatternPart =
+  | { kind: "literal"; value: string }
+  | { kind: "param"; name: string; constraint?: string }
+
+interface PatternChunk {
+  optional: boolean
+  parts: PatternPart[]
+}
+
+function parseParts(segment: string): PatternPart[] {
+  const parts: PatternPart[] = []
+  const regex = new RegExp(PARAM_REGEX.source, "g")
+  let cursor = 0
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(segment)) !== null) {
+    if (match.index > cursor) {
+      parts.push({ kind: "literal", value: segment.slice(cursor, match.index) })
+    }
+    parts.push({ kind: "param", name: match[1], constraint: match[2] || undefined })
+    cursor = match.index + match[0].length
+  }
+  if (cursor < segment.length) {
+    parts.push({ kind: "literal", value: segment.slice(cursor) })
+  }
+  return parts
+}
+
+/**
+ * Split a pattern into chunks at `<...>` optional segment boundaries.
+ * Nesting is not supported.
+ */
+function parseChunks(pattern: string): PatternChunk[] {
+  const chunks: PatternChunk[] = []
+  let cursor = 0
+  while (cursor < pattern.length) {
+    const open = pattern.indexOf("<", cursor)
+    if (open === -1) {
+      chunks.push({ optional: false, parts: parseParts(pattern.slice(cursor)) })
+      break
+    }
+    const close = pattern.indexOf(">", open)
+    if (close === -1) {
+      throw new Error(`Unclosed optional segment in pattern: ${pattern}`)
+    }
+    const inner = pattern.slice(open + 1, close)
+    if (inner.includes("<")) {
+      throw new Error(`Nested optional segments are not supported: ${pattern}`)
+    }
+    if (open > cursor) {
+      chunks.push({ optional: false, parts: parseParts(pattern.slice(cursor, open)) })
+    }
+    chunks.push({ optional: true, parts: parseParts(inner) })
+    cursor = close + 1
+  }
+  return chunks
+}
+
+/**
  * Compile a path pattern string into a usable pattern object.
+ *
+ * Supports `{param}` placeholders, `{param:regex}` inline constraints, and
+ * `<...>` optional segments (e.g. `'{date}< {time}> - {slug}.md'`).
  *
  * @param pattern - The pattern string like '{year}/{slug}.md'
  * @returns A CompiledPattern instance
@@ -119,64 +204,92 @@ const REGEX_ESCAPE = /[.*+?^${}()|[\]\\]/g
  * pattern.match('2024/hello.md')  // { year: '2024', slug: 'hello' }
  */
 export function compilePattern(pattern: string): CompiledPattern {
-  // Extract all parameter names in order
+  const chunks = parseChunks(pattern)
+
   const paramNames: string[] = []
-  const placeholders: Array<{ raw: string; name: string; constraint?: string }> = []
-  let match: RegExpExecArray | null
-  const regex = new RegExp(PARAM_REGEX.source, "g")
-  while ((match = regex.exec(pattern)) !== null) {
-    const name = match[1]
-    const constraint = match[2] || undefined
-    paramNames.push(name)
-    placeholders.push({
-      raw: match[0],
-      name,
-      constraint,
-    })
+  const paramChunk = new Map<string, PatternChunk>()
+  for (const chunk of chunks) {
+    for (const part of chunk.parts) {
+      if (part.kind === "param") {
+        paramNames.push(part.name)
+        paramChunk.set(part.name, chunk)
+      }
+    }
   }
 
-  // Build the match regex by escaping literal segments and inserting
-  // capturing groups for placeholders.
+  // Build the match regex. Only param groups capture, so capture order
+  // follows param order even with optional (non-capturing) groups.
   let regexPattern = ""
-  let cursor = 0
-  const placeholderRegex = new RegExp(PARAM_REGEX.source, "g")
-  let placeholderMatch: RegExpExecArray | null
-  while ((placeholderMatch = placeholderRegex.exec(pattern)) !== null) {
-    const [raw, _name, constraint] = placeholderMatch
-    const literal = pattern.slice(cursor, placeholderMatch.index)
-    regexPattern += literal.replace(REGEX_ESCAPE, "\\$&")
-
-    // Use non-greedy groups so adjacent params separated by literals
-    // (e.g. "wp-{priority}-{name}.md") split as expected.
-    // Allow inline constraints via {param:...}, for example {num:\\d+}.
-    const capture = constraint?.trim() || "[^/]+?"
-    regexPattern += `(${capture})`
-    cursor = placeholderMatch.index + raw.length
+  for (const chunk of chunks) {
+    let sub = ""
+    for (const part of chunk.parts) {
+      if (part.kind === "literal") {
+        sub += part.value.replace(REGEX_ESCAPE, "\\$&")
+      } else {
+        // Non-greedy groups so adjacent params separated by literals
+        // (e.g. "wp-{priority}-{name}.md") split as expected.
+        sub += `(${part.constraint?.trim() || "[^/]+?"})`
+      }
+    }
+    regexPattern += chunk.optional ? `(?:${sub})?` : sub
   }
-  regexPattern += pattern.slice(cursor).replace(REGEX_ESCAPE, "\\$&")
-
   const matchRegex = new RegExp(`^${regexPattern}$`)
+
+  function toGlobs(constraints?: Record<string, unknown>): string[] {
+    const optionals = chunks.filter((c) => c.optional)
+    const globs = new Set<string>()
+
+    // Enumerate include/exclude combinations of optional chunks
+    for (let mask = 0; mask < 1 << optionals.length; mask++) {
+      const included = new Set<PatternChunk>()
+      optionals.forEach((chunk, i) => {
+        if (mask & (1 << i)) included.add(chunk)
+      })
+
+      // Prune variants that omit a constrained param
+      const omitsConstrained = [...paramChunk.entries()].some(
+        ([name, chunk]) =>
+          chunk.optional &&
+          !included.has(chunk) &&
+          constraints?.[name] !== undefined &&
+          constraints?.[name] !== null
+      )
+      if (omitsConstrained) continue
+
+      let glob = ""
+      for (const chunk of chunks) {
+        if (chunk.optional && !included.has(chunk)) continue
+        for (const part of chunk.parts) {
+          if (part.kind === "literal") {
+            glob += part.value.replace(GLOB_ESCAPE, "\\$&")
+          } else {
+            const value = constraints?.[part.name]
+            glob +=
+              value !== undefined && value !== null
+                ? String(value).replace(GLOB_ESCAPE, "\\$&")
+                : "*"
+          }
+        }
+      }
+      globs.add(glob)
+    }
+
+    return [...globs]
+  }
 
   return {
     pattern,
     paramNames,
+    toGlobs,
 
     toGlob(constraints?: Record<string, unknown>): string {
-      let glob = pattern
-
-      // Replace each param with either its constrained value or a wildcard
-      for (const placeholder of placeholders) {
-        const value = constraints?.[placeholder.name]
-        if (value !== undefined && value !== null) {
-          // Use the constrained value
-          glob = glob.replace(placeholder.raw, String(value))
-        } else {
-          // Use a wildcard - * matches anything except /
-          glob = glob.replace(placeholder.raw, "*")
-        }
+      const globs = toGlobs(constraints)
+      if (globs.length > 1) {
+        throw new Error(
+          `Pattern has optional segments producing ${globs.length} glob variants; use toGlobs(): ${pattern}`
+        )
       }
-
-      return glob
+      return globs[0]
     },
 
     match(path: string): Record<string, string> | null {
@@ -185,19 +298,33 @@ export function compilePattern(pattern: string): CompiledPattern {
 
       const params: Record<string, string> = {}
       for (let i = 0; i < paramNames.length; i++) {
-        params[paramNames[i]] = result[i + 1]
+        if (result[i + 1] !== undefined) {
+          params[paramNames[i]] = result[i + 1]
+        }
       }
       return params
     },
 
     build(params: Record<string, string>): string {
-      let result = pattern
-      for (const placeholder of placeholders) {
-        const value = params[placeholder.name]
-        if (value === undefined) {
-          throw new Error(`Missing required param: ${placeholder.name}`)
+      let result = ""
+      for (const chunk of chunks) {
+        if (chunk.optional) {
+          const chunkParams = chunk.parts.filter((p) => p.kind === "param")
+          if (!chunkParams.every((p) => p.kind === "param" && params[p.name] !== undefined)) {
+            continue
+          }
         }
-        result = result.replace(placeholder.raw, value)
+        for (const part of chunk.parts) {
+          if (part.kind === "literal") {
+            result += part.value
+          } else {
+            const value = params[part.name]
+            if (value === undefined) {
+              throw new Error(`Missing required param: ${part.name}`)
+            }
+            result += value
+          }
+        }
       }
       return result
     },

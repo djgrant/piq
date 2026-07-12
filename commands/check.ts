@@ -11,6 +11,10 @@ export const command = defineCommand({
       await g.activity("Check resolvers package", async () => {
         await r.exec("pnpm exec tsc --noEmit", { cwd: "packages/resolvers" });
       });
+
+      await g.activity("Check cli package", async () => {
+        await r.exec("pnpm exec tsc --noEmit", { cwd: "packages/cli" });
+      });
     });
 
     r.reporter.success("Workspace checks complete");

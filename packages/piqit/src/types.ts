@@ -113,11 +113,29 @@ export interface QuerySpec<TScan, TFilter, TSelect extends string> {
  * @template TFilterSchema - StandardSchema for filter parameters
  * @template TResultSchema - StandardSchema for the namespaced result shape
  */
+/**
+ * Optional introspection metadata a resolver can expose for tooling
+ * (e.g. the piq CLI's schema output). StandardSchema doesn't support
+ * enumerating fields, so resolvers surface what they know here.
+ */
+export interface ResolverMeta {
+  /** Keys accepted by scan() */
+  scanKeys?: string[]
+  /** Keys accepted by filter() */
+  filterKeys?: string[]
+  /** Concrete selectable dot-paths */
+  selectPaths?: string[]
+}
+
 export interface Resolver<
   TScanSchema extends StandardSchema,
   TFilterSchema extends StandardSchema,
   TResultSchema extends StandardSchema
 > {
+  /**
+   * Optional introspection metadata for tooling.
+   */
+  meta?: ResolverMeta
   /**
    * The schemas that define this resolver's contract.
    */
