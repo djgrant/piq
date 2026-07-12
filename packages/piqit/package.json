@@ -3,6 +3,15 @@
   "version": "0.3.0",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/djgrant/piq.git",
+    "directory": "packages/piqit"
+  },
+  "homepage": "https://github.com/djgrant/piq#readme",
+  "bugs": {
+    "url": "https://github.com/djgrant/piq/issues"
+  },
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
