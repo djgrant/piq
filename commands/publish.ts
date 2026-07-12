@@ -1,3 +1,14 @@
+/**
+ * Publish command
+ *
+ * Publishes the workspace packages to npm directly from the machine. The normal
+ * flow is `pok version` (which pushes a tag the Release workflow publishes from,
+ * via OIDC trusted publishing with provenance) — this command is the manual
+ * fallback, plus --dry-run inspection and --verdaccio for local testing.
+ *
+ * Usage: pok publish [--dry-run] [--verdaccio]
+ */
+
 import { defineCommand } from "@pokit/core";
 import { $ } from "bun";
 import { z } from "zod";
