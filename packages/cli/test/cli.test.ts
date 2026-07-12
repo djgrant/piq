@@ -130,3 +130,40 @@ describe("contains filter", () => {
     expect(stderr.trim()).toBe("")
   })
 })
+
+describe("path validation and file.path", () => {
+  test("selecting file.path returns the source file path", async () => {
+    const { stdout, exitCode } = await runCli([
+      "notes",
+      "--scan", "year=2025",
+      "--select", "params.slug,file.path",
+    ])
+    expect(exitCode).toBe(0)
+    expect(JSON.parse(stdout.trim())).toEqual({
+      slug: "third-note",
+      path: "content/2025/third-note.md",
+    })
+  })
+
+  test("unknown select path errors with the valid paths", async () => {
+    const { stderr, exitCode } = await runCli(["notes", "--select", "path"])
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain("Unknown select path 'path'")
+    expect(stderr).toContain("file.path")
+  })
+
+  test("unknown sort path errors", async () => {
+    const { stderr, exitCode } = await runCli([
+      "notes",
+      "--sort", "frontmatter.updated:desc",
+      "--select", "params.slug",
+    ])
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain("Unknown sort path 'frontmatter.updated'")
+  })
+
+  test("namespace wildcards remain valid", async () => {
+    const { exitCode } = await runCli(["notes", "--select", "params.*"])
+    expect(exitCode).toBe(0)
+  })
+})

@@ -142,6 +142,20 @@ export async function run(argv: string[]): Promise<number> {
     )
   }
 
+  // Validate paths against resolver metadata when available, so typos fail
+  // loudly instead of producing silently empty columns
+  const validPaths = resolver.meta?.selectPaths
+  const assertValidPath = (p: string, flag: string): void => {
+    if (!validPaths?.length) return
+    if (validPaths.includes(p)) return
+    const namespace = p.split(".")[0]
+    if (p === `${namespace}.*` && validPaths.some((v) => v.startsWith(`${namespace}.`))) return
+    if (validPaths.includes(`${namespace}.*`) && p.startsWith(`${namespace}.`)) return
+    throw new CliError(
+      `Unknown ${flag} path '${p}'. Valid paths: ${validPaths.join(", ")}`
+    )
+  }
+
   let query = from(resolver) as QueryBuilder<AnyResolver, Record<string, unknown>>
 
   for (const pair of values.scan ?? []) {
@@ -161,6 +175,7 @@ export async function run(argv: string[]): Promise<number> {
     if (direction !== "asc" && direction !== "desc") {
       throw new CliError(`--sort direction must be asc or desc, got: ${sortSpec}`)
     }
+    assertValidPath(sortPath, "sort")
     query = query.sort(sortPath as never, direction)
   }
   if (values.limit !== undefined) {
@@ -172,6 +187,9 @@ export async function run(argv: string[]): Promise<number> {
   }
 
   const selectPaths = values.select.split(",").map((s) => s.trim()).filter(Boolean)
+  for (const p of selectPaths) {
+    assertValidPath(p, "select")
+  }
   const rows = await (query.select(...(selectPaths as never[])) as QueryBuilder<
     AnyResolver,
     Record<string, unknown>

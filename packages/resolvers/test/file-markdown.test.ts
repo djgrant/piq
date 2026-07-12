@@ -713,3 +713,35 @@ describe("contains filter", () => {
     expect(results.length).toBe(2)
   })
 })
+
+// =============================================================================
+// file.path Selection
+// =============================================================================
+
+describe("file.path selection", () => {
+  const resolver = fileMarkdown({
+    base: "packages/resolvers/test/fixtures/posts",
+    path: "{year}/{slug}.md",
+    frontmatter: postFrontmatterSchema,
+  })
+
+  test("file.path returns the source path joined to the configured base", async () => {
+    const results = await resolver.resolve({
+      scan: { year: "2024" },
+      select: ["params.slug", "file.path"],
+    })
+
+    const hello = results.find((r) => r.params?.slug === "hello-world")
+    expect(hello?.file?.path).toBe(
+      "packages/resolvers/test/fixtures/posts/2024/hello-world.md"
+    )
+  })
+
+  test("file is not materialized unless selected", async () => {
+    const results = await resolver.resolve({
+      scan: { year: "2024" },
+      select: ["params.slug"],
+    })
+    expect(results[0].file).toBeUndefined()
+  })
+})

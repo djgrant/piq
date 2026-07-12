@@ -46,6 +46,7 @@ const posts = fileMarkdown({
 - Requires Bun runtime.
 - Scan values come from path placeholders.
 - Filter checks frontmatter fields: exact match, or substring via `{ contains: '...' }`.
+- `file.path` selects each record's source path (the configured `base` joined to the matched file), for citing or opening the file. Materialised only when selected.
 
 Use `fileMarkdown` in Bun-based server and build contexts.
 

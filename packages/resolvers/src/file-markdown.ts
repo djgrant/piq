@@ -77,6 +77,8 @@ export interface FileMarkdownResult<
   params: TParams
   frontmatter: TFrontmatter
   body: TBody
+  /** Source file location, selectable as 'file.path' */
+  file: { path: string }
 }
 
 /**
@@ -173,6 +175,13 @@ function needsBody(selectPaths: string[]): boolean {
  */
 function needsParams(selectPaths: string[]): boolean {
   return selectPaths.some((p) => p.startsWith("params.") || p === "params.*")
+}
+
+/**
+ * Check if any select paths require the source file info.
+ */
+function needsFile(selectPaths: string[]): boolean {
+  return selectPaths.some((p) => p.startsWith("file.") || p === "file.*")
 }
 
 /**
@@ -289,6 +298,7 @@ export function fileMarkdown<
     ...(["raw", "html", "headings"] as const)
       .filter((part) => bodyOptions[part])
       .map((part) => `body.${part}`),
+    "file.path",
   ]
 
   return {
@@ -332,6 +342,7 @@ export function fileMarkdown<
 
       // 3. Determine what we need to read
       const wantParams = needsParams(spec.select)
+      const wantFile = needsFile(spec.select)
       const wantFrontmatter = needsFrontmatter(spec.select)
       const wantBody = needsBody(spec.select)
       const hasFilter = spec.filter && Object.keys(spec.filter).length > 0
@@ -424,6 +435,10 @@ export function fileMarkdown<
 
         if (wantParams) {
           result.params = params as PathParams<TPath>
+        }
+
+        if (wantFile) {
+          result.file = { path: path.join(options.base, relativePath) }
         }
 
         if (wantFrontmatter) {

@@ -69,10 +69,13 @@ piq posts \
 | `--filter k=v` | `.filter({ k: v })` | Repeatable; `true`, `false`, `null`, and numbers are coerced |
 | `--filter k~=v` | `.filter({ k: { contains: v } })` | Substring match, case-sensitive |
 | `--select a,b` | `.select('a', 'b')` | Required |
+| `--select file.path` | `.select('file.path')` | Source path of each record |
 | `--sort path:desc` | `.sort('path', 'desc')` | Repeatable; direction defaults to `asc` |
 | `--limit n` | `.limit(n)` | Applied after sort |
 
 ## Output
+
+Select and sort paths are validated against the collection's schema when the resolver exposes it; an unknown path errors and lists the valid paths.
 
 Rows print as JSON lines by default, one object per line, so results pipe cleanly into `jq` or another process. `--json` prints a single array. `--table` prints aligned columns for reading in a terminal.
 
