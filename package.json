@@ -25,7 +25,7 @@
     "@pokit/terminal": "^0.6.0",
     "@types/bun": "latest",
     "concurrently": "^9.1.2",
-    "pok-plugins": "file:../../pok-plugins",
+    "pok-plugins": "github:djgrant/pok-plugins",
     "typescript": "^5.8.3",
     "zod": "^4.3.6"
   },

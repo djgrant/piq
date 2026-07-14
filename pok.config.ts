@@ -1,13 +1,13 @@
 import { defineConfig } from '@pokit/core';
 import { createTerminalUI } from '@pokit/terminal';
-import { releaseRecipe } from 'pok-plugins';
+import { release } from 'pok-plugins';
 
 export default defineConfig({
   commandsDir: './commands',
   ...createTerminalUI(),
   appName: 'piq',
   plugins: [
-    releaseRecipe({
+    release({
       packages: {
         files: [
           'packages/piqit/package.json',
