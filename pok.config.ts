@@ -1,12 +1,8 @@
 import { defineConfig } from '@pokit/core';
-import { createReporterAdapter } from '@pokit/reporter-clack';
-import { createPrompter } from '@pokit/prompter-clack';
-import { createTabsAdapter } from '@pokit/tabs-ink';
+import { createTerminalUI } from '@pokit/terminal';
 
 export default defineConfig({
   commandsDir: './commands',
-  reporter: createReporterAdapter(),
-  prompter: createPrompter(),
-  tabs: createTabsAdapter(),
+  ...createTerminalUI(),
   appName: 'piq',
 });

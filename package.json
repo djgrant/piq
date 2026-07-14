@@ -21,10 +21,8 @@
     "packages/*"
   ],
   "devDependencies": {
-    "@pokit/core": "0.1.0",
-    "@pokit/prompter-clack": "0.1.0",
-    "@pokit/reporter-clack": "0.1.0",
-    "@pokit/tabs-ink": "^0.0.42",
+    "@pokit/core": "^0.6.0",
+    "@pokit/terminal": "^0.6.0",
     "@types/bun": "latest",
     "bumpp": "^10.3.2",
     "concurrently": "^9.1.2",
