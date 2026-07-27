@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/djgrant/piq/issues"
   },
-  "packageManager": "pnpm@11.6.0",
+  "packageManager": "pnpm@11.17.0",
   "scripts": {
     "typecheck": "pnpm --filter piqit --filter @piqit/resolvers --filter @piqit/cli exec tsc --noEmit",
     "build": "pnpm --filter piqit --filter @piqit/resolvers --filter @piqit/cli exec tsc && node ./scripts/smoke-node-esm-artifacts.mjs",
