@@ -27,6 +27,9 @@ importers:
       pok-plugins:
         specifier: github:djgrant/pok-plugins
         version: https://codeload.github.com/djgrant/pok-plugins/tar.gz/9d0dcda7a6ae5114f09a9bfd1d30ee900b21cb86(@pokit/core@0.6.0(zod@4.3.6))(magicast@0.5.1)
+      pokit:
+        specifier: ^0.3.2
+        version: 0.3.2
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
@@ -432,6 +435,11 @@ packages:
     version: 0.1.0
     peerDependencies:
       '@pokit/core': '>=0.6.0'
+
+  pokit@0.3.2:
+    resolution: {integrity: sha512-x5oitfBVlyVPSDLTRTDxU0nU6o2tv0NOGwnq/SkEbLpA0cH2j/2tds/RhnGlQf4V5F7lhF/Aw5ZZY//RfL+7tg==}
+    engines: {bun: '>=1.0.0'}
+    hasBin: true
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
@@ -927,6 +935,8 @@ snapshots:
       zod: 4.3.6
     transitivePeerDependencies:
       - magicast
+
+  pokit@0.3.2: {}
 
   queue-microtask@1.2.3: {}
 

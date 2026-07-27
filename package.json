@@ -26,6 +26,7 @@
     "@types/bun": "latest",
     "concurrently": "^9.1.2",
     "pok-plugins": "github:djgrant/pok-plugins",
+    "pokit": "^0.3.2",
     "typescript": "^5.8.3",
     "zod": "^4.3.6"
   },
