@@ -53,7 +53,7 @@ This repo ships two published packages:
 | `@piqit/resolvers` | Resolver implementations and content parsing helpers | `@piqit/resolvers`, `@piqit/resolvers/edge`, `@piqit/resolvers/static` |
 | `@piqit/cli` | `piq` command-line interface for querying collections declared in `piq.config.ts` | `@piqit/cli`, `piq` bin |
 
-The `docs` directory holds the documentation source, which is published from a separate repository.
+The `docs` directory holds the documentation source and the site that publishes it. Run `pok docs dev` to preview it.
 
 ## Quick Start
 

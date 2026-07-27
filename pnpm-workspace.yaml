@@ -1,9 +1,12 @@
 packages:
   - packages/*
+  - docs
 allowBuilds:
-  esbuild: set this to true or false
-  sharp: set this to true or false
-  workerd: set this to true or false
+  esbuild: true
+  lightningcss: true
+  workerd: true
+  # Pulled in by Wrangler's image bindings, which the docs site does not use.
+  sharp: false
 minimumReleaseAgeExclude:
   - '@pokit/core@0.6.0'
   - '@pokit/terminal@0.6.0'

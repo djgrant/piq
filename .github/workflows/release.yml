@@ -31,7 +31,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --filter '!@piqit/docs-site'
 
       # Build first: resolvers/cli resolve `piqit` through its emitted
       # dist/*.d.ts, so the typecheck pass needs the declarations to exist.
@@ -70,7 +70,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --filter '!@piqit/docs-site'
 
       - name: Build
         run: pnpm run build
