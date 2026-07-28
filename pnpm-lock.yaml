@@ -26,7 +26,7 @@ importers:
         version: 9.2.1
       pok-plugins:
         specifier: github:djgrant/pok-plugins
-        version: https://codeload.github.com/djgrant/pok-plugins/tar.gz/9d0dcda7a6ae5114f09a9bfd1d30ee900b21cb86(@pokit/core@0.6.0(zod@4.3.6))(magicast@0.5.1)
+        version: https://codeload.github.com/djgrant/pok-plugins/tar.gz/23cd5811e6b6339ef97d8e0072be3164567c92ba(@pokit/core@0.6.0(zod@4.3.6))(magicast@0.5.1)
       pokit:
         specifier: ^0.3.2
         version: 0.3.2
@@ -2995,8 +2995,8 @@ packages:
     resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
     engines: {node: '>=14.19.0'}
 
-  pok-plugins@https://codeload.github.com/djgrant/pok-plugins/tar.gz/9d0dcda7a6ae5114f09a9bfd1d30ee900b21cb86:
-    resolution: {gitHosted: true, integrity: sha512-m8j/S757eJZMJIY9JBR8UVuTJvNBH0MLMhAD1UhJIO2fk226099c4lfge4x8b+JR8jAwNGcYMcN1KuhgVu1tzg==, tarball: https://codeload.github.com/djgrant/pok-plugins/tar.gz/9d0dcda7a6ae5114f09a9bfd1d30ee900b21cb86}
+  pok-plugins@https://codeload.github.com/djgrant/pok-plugins/tar.gz/23cd5811e6b6339ef97d8e0072be3164567c92ba:
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/djgrant/pok-plugins/tar.gz/23cd5811e6b6339ef97d8e0072be3164567c92ba}
     version: 0.1.0
     peerDependencies:
       '@pokit/core': '>=0.6.0'
@@ -6112,7 +6112,7 @@ snapshots:
 
   pngjs@7.0.0: {}
 
-  pok-plugins@https://codeload.github.com/djgrant/pok-plugins/tar.gz/9d0dcda7a6ae5114f09a9bfd1d30ee900b21cb86(@pokit/core@0.6.0(zod@4.3.6))(magicast@0.5.1):
+  pok-plugins@https://codeload.github.com/djgrant/pok-plugins/tar.gz/23cd5811e6b6339ef97d8e0072be3164567c92ba(@pokit/core@0.6.0(zod@4.3.6))(magicast@0.5.1):
     dependencies:
       '@pokit/core': 0.6.0(zod@4.3.6)
       bumpp: 10.4.1(magicast@0.5.1)

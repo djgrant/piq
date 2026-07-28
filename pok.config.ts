@@ -1,6 +1,6 @@
 import { defineConfig } from '@pokit/core';
 import { createTerminalUI } from '@pokit/terminal';
-import { release } from 'pok-plugins';
+import { docs, release } from 'pok-plugins';
 
 export default defineConfig({
   commandsDir: './commands',
@@ -19,5 +19,6 @@ export default defineConfig({
       verdaccio: true,
       build: 'bun tsc --build',
     }),
+    docs({ name: 'piq-docs' }),
   ],
 });
