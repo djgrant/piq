@@ -8,16 +8,15 @@ export default defineConfig({
   appName: 'piq',
   plugins: [
     release({
-      packages: {
-        files: [
-          'packages/piqit/package.json',
-          'packages/resolvers/package.json',
-          'packages/cli/package.json',
-        ],
-        names: ['piqit', '@piqit/resolvers', '@piqit/cli'],
-      },
+      // All three share the root build script so local publish and CI's
+      // Release workflow build identically (it also runs the ESM smoke test);
+      // the plugin runs the deduplicated command once.
+      packages: [
+        { file: 'packages/piqit/package.json', build: 'pnpm run build' },
+        { file: 'packages/resolvers/package.json', build: 'pnpm run build' },
+        { file: 'packages/cli/package.json', build: 'pnpm run build' },
+      ],
       verdaccio: true,
-      build: 'bun tsc --build',
     }),
     docs({ name: 'piq-docs' }),
   ],
