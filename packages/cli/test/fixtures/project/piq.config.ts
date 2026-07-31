@@ -11,6 +11,8 @@ export default defineConfig({
         title: z.string(),
         status: z.enum(["draft", "published"]),
         priority: z.number(),
+        summary: z.string().nullable().optional(),
+        tags: z.array(z.string()).optional(),
       }),
     }),
   },

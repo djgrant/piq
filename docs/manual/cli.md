@@ -77,7 +77,7 @@ piq posts \
 
 Select and sort paths are validated against the collection's schema when the resolver exposes it; an unknown path errors and lists the valid paths.
 
-Rows print as JSON lines by default, one object per line, so results pipe cleanly into `jq` or another process. `--json` prints a single array. `--table` prints aligned columns for reading in a terminal.
+Rows print as JSON lines by default, one object per line, so results pipe cleanly into `jq` or another process. `--json` prints a single array. `--table` prints aligned columns for reading in a terminal. `--raw` and `--raw0` print bare values.
 
 ```
 $ piq posts --select params.slug,frontmatter.status --table
@@ -86,6 +86,33 @@ slug         status
 first-note   published
 second-note  draft
 ```
+
+### Raw Values
+
+`--raw` prints each value as plain text, one per line, so results pipe straight into line-based tools instead of going through `jq`.
+
+```
+$ piq posts --scan year=2024 --select file.path --raw
+content/posts/2024/hello-world.md
+content/posts/2024/tables-in-markdown.md
+```
+
+```bash
+piq posts --scan year=2024 --select file.path --raw | xargs grep -l "TODO"
+```
+
+`--raw0` is the same output with a NUL byte after each value instead of a newline. File names can contain newlines and spaces, but never a NUL byte, so this is the safe separator for paths. `xargs -0`, and the output of `find -print0`, `grep -Z`, and `rg -0`, use the same convention.
+
+```bash
+piq posts --scan year=2024 --select file.path --raw0 | xargs -0 grep -l "TODO"
+```
+
+Both flags follow the same rules:
+
+- `--select` must contain exactly one path, such as `file.path`. Raw output has no field names, so two values in one row could not be told apart. A wildcard path that expands to several values is an error too.
+- The value must be a string, a number, or a boolean. An object or array is an error; use `--json` for those.
+- `null` prints as an empty value.
+- `--raw`, `--raw0`, `--json`, and `--table` cannot be combined.
 
 ## Use With Agents
 

@@ -1,6 +1,8 @@
 ---
-status: proposed
-created_at: 2026-07-31
+status: accepted
+implementation: in progress
+created: 2026-07-31
+updated: 2026-07-31
 ---
 
 # RFC 0001: Raw output for `piq`
@@ -31,9 +33,9 @@ This allows output to be piped directly into other tools, instead of relying on 
 piq posts --scan year=2024 --select file.path --raw | xargs grep -l "TODO"
 ```
 
-## Proposal: `--print0`
+## Proposal: `--raw0`
 
-`--print0` is `--raw` with a different separator: a NUL byte (byte value 0) after each value instead of a newline.
+`--raw0` is `--raw` with a different separator: a NUL byte (byte value 0) after each value instead of a newline.
 
 It exists because file paths can contain newlines and spaces, which breaks line-based piping. Unix forbids only the NUL byte in file names, so NUL always separates paths safely. xargs reads this format with `-0`:
 

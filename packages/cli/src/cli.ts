@@ -28,6 +28,8 @@ Query options:
 Output options:
   --json            JSON array instead of JSON lines
   --table           Aligned table for humans
+  --raw             Plain values, one per line (single --select path)
+  --raw0            Plain values, NUL-separated (for xargs -0)
 
 Other:
   --config <path>   Explicit config file (default: nearest piq.config.ts)
@@ -77,6 +79,34 @@ function renderTable(rows: Record<string, unknown>[]): string {
   ].join("\n")
 }
 
+/**
+ * Render rows as bare values joined by `separator`. Raw output carries no
+ * field names, so a row must hold exactly one primitive value.
+ */
+function renderRaw(rows: Record<string, unknown>[], separator: string, flag: string): string {
+  let out = ""
+  for (const row of rows) {
+    const values = Object.values(row)
+    if (values.length !== 1) {
+      throw new CliError(
+        `--${flag} expects one value per row, got ${values.length}. Select a single concrete path, not a wildcard.`
+      )
+    }
+    const value = values[0]
+    if (value === null || value === undefined) {
+      out += separator
+      continue
+    }
+    if (typeof value === "object") {
+      throw new CliError(
+        `--${flag} expects a string, number, or boolean, got ${Array.isArray(value) ? "an array" : "an object"}. Use --json for structured values.`
+      )
+    }
+    out += String(value) + separator
+  }
+  return out
+}
+
 export async function run(argv: string[]): Promise<number> {
   const { values, positionals } = parseArgs({
     args: argv,
@@ -89,6 +119,8 @@ export async function run(argv: string[]): Promise<number> {
       limit: { type: "string" },
       json: { type: "boolean" },
       table: { type: "boolean" },
+      raw: { type: "boolean" },
+      raw0: { type: "boolean" },
       schema: { type: "boolean" },
       config: { type: "string" },
       help: { type: "boolean" },
@@ -98,6 +130,13 @@ export async function run(argv: string[]): Promise<number> {
   if (values.help) {
     console.log(USAGE)
     return 0
+  }
+
+  const outputModes = (["json", "table", "raw", "raw0"] as const).filter((m) => values[m])
+  if (outputModes.length > 1) {
+    throw new CliError(
+      `Output modes are mutually exclusive, got: ${outputModes.map((m) => `--${m}`).join(", ")}`
+    )
   }
 
   const configPath = values.config
@@ -190,12 +229,22 @@ export async function run(argv: string[]): Promise<number> {
   for (const p of selectPaths) {
     assertValidPath(p, "select")
   }
+  const rawFlag = values.raw ? "raw" : values.raw0 ? "raw0" : undefined
+  if (rawFlag && selectPaths.length !== 1) {
+    throw new CliError(
+      `--${rawFlag} expects exactly one --select path, got ${selectPaths.length}. Raw output has no field names to tell values apart.`
+    )
+  }
   const rows = await (query.select(...(selectPaths as never[])) as QueryBuilder<
     AnyResolver,
     Record<string, unknown>
   >).exec()
 
-  if (values.table) {
+  if (rawFlag) {
+    // Written unbuffered: the trailing separator is the value's own, and
+    // raw0 must emit no newline at all
+    process.stdout.write(renderRaw(rows, values.raw0 ? "\0" : "\n", rawFlag))
+  } else if (values.table) {
     console.log(renderTable(rows))
   } else if (values.json) {
     console.log(JSON.stringify(rows, null, 2))

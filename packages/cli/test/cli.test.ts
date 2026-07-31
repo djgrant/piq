@@ -131,6 +131,105 @@ describe("contains filter", () => {
   })
 })
 
+describe("raw output", () => {
+  test("--raw prints one plain value per line", async () => {
+    const { stdout, exitCode } = await runCli([
+      "notes",
+      "--sort", "params.slug",
+      "--select", "file.path",
+      "--raw",
+    ])
+    expect(exitCode).toBe(0)
+    expect(stdout).toBe(
+      "content/2024/first-note.md\ncontent/2024/second-note.md\ncontent/2025/third-note.md\n"
+    )
+  })
+
+  test("--raw0 separates values with NUL and emits no newline", async () => {
+    const { stdout, exitCode } = await runCli([
+      "notes",
+      "--scan", "year=2025",
+      "--select", "file.path",
+      "--raw0",
+    ])
+    expect(exitCode).toBe(0)
+    expect(stdout).toBe("content/2025/third-note.md\0")
+  })
+
+  test("--raw renders non-string primitives", async () => {
+    const { stdout, exitCode } = await runCli([
+      "notes",
+      "--filter", "priority=3",
+      "--select", "frontmatter.priority",
+      "--raw",
+    ])
+    expect(exitCode).toBe(0)
+    expect(stdout).toBe("3\n")
+  })
+
+  test("null prints as an empty value", async () => {
+    const { stdout, exitCode } = await runCli([
+      "notes",
+      "--scan", "year=2025",
+      "--select", "frontmatter.summary",
+      "--raw",
+    ])
+    expect(exitCode).toBe(0)
+    expect(stdout).toBe("\n")
+  })
+
+  test("--raw rejects an array value, pointing at --json", async () => {
+    const { stderr, exitCode } = await runCli([
+      "notes",
+      "--scan", "year=2025",
+      "--select", "frontmatter.tags",
+      "--raw",
+    ])
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain("got an array")
+    expect(stderr).toContain("--json")
+  })
+
+  test("--raw rejects more than one --select path", async () => {
+    const { stderr, exitCode } = await runCli([
+      "notes",
+      "--select", "params.slug,file.path",
+      "--raw",
+    ])
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain("--raw expects exactly one --select path")
+  })
+
+  test("--raw rejects a wildcard that expands to several values", async () => {
+    const { stderr, exitCode } = await runCli(["notes", "--select", "params.*", "--raw"])
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain("--raw expects one value per row")
+  })
+
+  test("output modes cannot be combined", async () => {
+    const { stderr, exitCode } = await runCli([
+      "notes",
+      "--select", "file.path",
+      "--raw",
+      "--json",
+    ])
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain("mutually exclusive")
+  })
+
+  test("zero rows print nothing", async () => {
+    const { stdout, stderr, exitCode } = await runCli([
+      "notes",
+      "--filter", "title=Note",
+      "--select", "file.path",
+      "--raw",
+    ])
+    expect(exitCode).toBe(0)
+    expect(stdout).toBe("")
+    expect(stderr.trim()).toBe("")
+  })
+})
+
 describe("path validation and file.path", () => {
   test("selecting file.path returns the source file path", async () => {
     const { stdout, exitCode } = await runCli([
