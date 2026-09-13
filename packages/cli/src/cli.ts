@@ -9,11 +9,13 @@
 
 import { from, type QueryBuilder } from "piqit"
 import { findConfig, loadConfig, type AnyResolver, type PiqConfig } from "./config.js"
+import { readFile } from "node:fs/promises"
 import { parseArgs } from "node:util"
 import path from "node:path"
 
 const USAGE = `Usage:
   piq                                    List collections
+  piq skill                              Print the piq agent skill
   piq <collection> --schema              Show queryable fields
   piq <collection> [options]             Run a query
 
@@ -37,6 +39,21 @@ Other:
 `
 
 class CliError extends Error {}
+
+async function readSkill(): Promise<string> {
+  const candidates = [
+    path.resolve(import.meta.dir, "../SKILL.md"),
+    path.resolve(import.meta.dir, "../../../SKILL.md"),
+  ]
+  for (const candidate of candidates) {
+    try {
+      return await readFile(candidate, "utf8")
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+    }
+  }
+  throw new CliError("The piq agent skill was not included in this installation.")
+}
 
 function parsePair(input: string, flag: string): [string, string] {
   const eq = input.indexOf("=")
@@ -129,6 +146,11 @@ export async function run(argv: string[]): Promise<number> {
 
   if (values.help) {
     console.log(USAGE)
+    return 0
+  }
+
+  if (positionals[0] === "skill") {
+    process.stdout.write(await readSkill())
     return 0
   }
 

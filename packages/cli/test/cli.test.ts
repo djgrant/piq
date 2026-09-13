@@ -22,6 +22,14 @@ async function runCli(
 }
 
 describe("piq CLI", () => {
+  test("skill prints the bundled agent skill without requiring a config", async () => {
+    const { stdout, stderr, exitCode } = await runCli(["skill"], import.meta.dir)
+    expect(exitCode).toBe(0)
+    expect(stderr).toBe("")
+    expect(stdout).toStartWith("---\nname: piq\n")
+    expect(stdout).toContain("# piq")
+  })
+
   test("lists collections when run without arguments", async () => {
     const { stdout, exitCode } = await runCli([])
     expect(exitCode).toBe(0)

@@ -22,7 +22,11 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": ["dist", "SKILL.md"],
+  "scripts": {
+    "prepack": "bun scripts/package-skill.ts",
+    "postpack": "bun scripts/package-skill.ts clean"
+  },
   "engines": {
     "bun": ">=1.0.0"
   },

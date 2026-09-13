@@ -9,6 +9,8 @@ description: Query collections from the command line
 
 Requires the Bun runtime.
 
+Run `piq skill` to print the bundled agent skill. This command does not require a `piq.config.ts`, so the skill can be loaded before working in a configured project.
+
 ## Setup
 
 ```bash
@@ -116,7 +118,13 @@ Both flags follow the same rules:
 
 ## Use With Agents
 
-A single line in your agent instructions replaces hand-maintained index files:
+Print the complete bundled agent skill:
+
+```bash
+piq skill
+```
+
+Or add a single line to your agent instructions:
 
 > Query this repo's document collections with `piq`. Run `piq` to list collections and `piq <name> --schema` to see fields.
 

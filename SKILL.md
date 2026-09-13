@@ -26,7 +26,7 @@ This progression also avoids unnecessary work. Path values are already known whi
 
 ## Query a repository as an agent
 
-When a repository has `piq.config.ts`, prefer the `piq` CLI over hand-maintained indexes or broad file reads.
+When a repository has `piq.config.ts`, prefer the `piq` CLI over hand-maintained indexes or broad file reads. Run `piq skill` at any time to print these instructions; it does not require a project config.
 
 ```bash
 # Discover configured collections and their queryable fields
