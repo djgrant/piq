@@ -1,10 +1,8 @@
 import { defineConfig } from '@pokit/core';
-import { createTerminalUI } from '@pokit/terminal';
 import { docs, release } from 'pok-plugins';
 
 export default defineConfig({
   commandsDir: './commands',
-  ...createTerminalUI(),
   appName: 'piq',
   plugins: [
     release({
