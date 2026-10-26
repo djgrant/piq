@@ -6,9 +6,8 @@ export default defineConfig({
   appName: 'piq',
   plugins: [
     release({
-      // All three share the root build script so local publish and CI's
-      // Release workflow build identically (it also runs the ESM smoke test);
-      // the plugin runs the deduplicated command once.
+      // All three share the root build script (it also runs the ESM smoke
+      // test); the plugin runs the deduplicated command once.
       packages: [
         { file: 'packages/piqit/package.json', build: 'pnpm run build' },
         { file: 'packages/resolvers/package.json', build: 'pnpm run build' },
