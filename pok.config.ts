@@ -13,7 +13,6 @@ export default defineConfig({
         { file: 'packages/resolvers/package.json', build: 'pnpm run build' },
         { file: 'packages/cli/package.json', build: 'pnpm run build' },
       ],
-      verdaccio: true,
     }),
     docs({ name: 'piq-docs' }),
   ],
