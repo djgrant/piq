@@ -21,8 +21,8 @@
     "packages/*"
   ],
   "devDependencies": {
-    "@pokit/core": "^0.13.0",
-    "@pokit/terminal": "^0.13.0",
+    "@pokit/core": "^0.13.1",
+    "@pokit/terminal": "^0.13.1",
     "@types/bun": "latest",
     "concurrently": "^9.1.2",
     "pok-plugins": "github:djgrant/pok-plugins",
