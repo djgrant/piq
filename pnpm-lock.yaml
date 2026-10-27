@@ -26,7 +26,7 @@ importers:
         version: 9.2.1
       pok-plugins:
         specifier: github:djgrant/pok-plugins
-        version: https://codeload.github.com/djgrant/pok-plugins/tar.gz/267ec295bdd04099455b117c75a1844773636213(@pokit/core@1.0.0)(magicast@0.5.1)
+        version: https://codeload.github.com/djgrant/pok-plugins/tar.gz/554602a1348f0bfe01bc5bed97546c9cd27ecd57(@pokit/core@1.0.0)(magicast@0.5.1)
       pokit:
         specifier: ^0.5.0
         version: 0.5.0
@@ -2756,11 +2756,11 @@ packages:
     resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
     engines: {node: '>=14.19.0'}
 
-  pok-plugins@https://codeload.github.com/djgrant/pok-plugins/tar.gz/267ec295bdd04099455b117c75a1844773636213:
-    resolution: {gitHosted: true, integrity: sha512-czHlWx0jiC+huS6PhsiQzUEd3xxlq1XGaC+863Th66Ohhe9R78a+ZQHbr0/yslzkKgtT8v1vARrxpLRIQ251NQ==, tarball: https://codeload.github.com/djgrant/pok-plugins/tar.gz/267ec295bdd04099455b117c75a1844773636213}
+  pok-plugins@https://codeload.github.com/djgrant/pok-plugins/tar.gz/554602a1348f0bfe01bc5bed97546c9cd27ecd57:
+    resolution: {gitHosted: true, integrity: sha512-gOXR3kUHSUhRumTFDZhgVWY+qml+3upVyrp0k/PXkV+BXxyyh79GkzZwBIpl0lRc/Rrbml6F/Hx3X4WGgYut7A==, tarball: https://codeload.github.com/djgrant/pok-plugins/tar.gz/554602a1348f0bfe01bc5bed97546c9cd27ecd57}
     version: 0.1.0
     peerDependencies:
-      '@pokit/core': '>=0.12.0'
+      '@pokit/core': '>=0.13.0'
 
   pokit@0.5.0:
     resolution: {integrity: sha512-xrC+gt1ddT5JnR8Tu25fyS9Vc2hpLIHM30Hmgc6dFl2MyZvz0uj8lnBsiRzRKjzxOqnJnvMj65NKqFLclKnxVQ==}
@@ -5571,7 +5571,7 @@ snapshots:
 
   pngjs@7.0.0: {}
 
-  pok-plugins@https://codeload.github.com/djgrant/pok-plugins/tar.gz/267ec295bdd04099455b117c75a1844773636213(@pokit/core@1.0.0)(magicast@0.5.1):
+  pok-plugins@https://codeload.github.com/djgrant/pok-plugins/tar.gz/554602a1348f0bfe01bc5bed97546c9cd27ecd57(@pokit/core@1.0.0)(magicast@0.5.1):
     dependencies:
       '@pokit/core': 1.0.0
       bumpp: 10.4.1(magicast@0.5.1)
